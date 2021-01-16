@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Product;
 use App\Repository\ProductRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Knp\Component\Pager\PaginatorInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -171,4 +172,55 @@ class ProductController extends AbstractController
             ]);
         }
     }
+
+
+    /**
+     * @Route("/products/maison", name="product_category_maison", methods={"GET"})
+     * Get the maison category products
+     */
+    public function MaisonProducts (ProductRepository $ProductRepository, Request $request, PaginatorInterface $paginator) {
+
+        $data = $ProductRepository->findBy(["category"=>"maison"]);
+
+        return $this->json($data);
+    }
+
+    /**
+     * @Route("/products/informatique", name="product_category_informatique", methods={"GET"})
+     * Get the informatique/high-tech category products
+     */
+    public function InformatiqueProducts (ProductRepository $ProductRepository) {
+
+        $data = $ProductRepository->findBy(["category"=>"informatique/high-tech"]);
+
+        // les envoyer en réponse
+        return $this->json($data);
+    }
+
+    /**
+     * @Route("/products/sports", name="product_category_sports", methods={"GET"})
+     * Get the sports/vetements category products
+     */
+    public function SportsProducts (ProductRepository $ProductRepository) {
+
+        $data = $ProductRepository->findBy(["category"=>"sports/vetements"]);
+
+        // les envoyer en réponse
+        return $this->json($data);
+    }
+
+    /**
+     * @Route("/products/livres", name="product_category_livres", methods={"GET"})
+     * Get the livres category products
+     */
+    public function LivresProducts (ProductRepository $ProductRepository) {
+
+        $data = $ProductRepository->findBy(["category"=>"livres"]);
+
+        // les envoyer en réponse
+        return $this->json($data);
+    }
+
+
+
 }
