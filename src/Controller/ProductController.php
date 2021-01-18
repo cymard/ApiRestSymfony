@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Product;
 use App\Repository\ProductRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Knp\Component\Pager\PaginatorInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -16,27 +17,19 @@ use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 
 class ProductController extends AbstractController
 {
+
     /**
      * @Route("/products", name="products", methods={"GET"})
      * Display the products
      */
-    public function getProducts (ProductRepository $productRepository, SerializerInterface $serializerInterface)
+    public function getProducts (ProductRepository $productRepository, SerializerInterface $serializerInterface ,Request $request,  PaginatorInterface $paginator)
     {
         // 1) Récuperer les produits en bdd
         $data = $productRepository->findAll();
-
-        // 2) transformation du code en json
-        $serializeData = $serializerInterface->serialize($data,"json");
-
-        // 3) Return la réponse
-        $response = new Response();
-        $response->setContent($serializeData);
-        $response->setStatusCode(Response::HTTP_OK);
-        $response->headers->set('Content-Type', 'application/json');
-        return $response;
-        
+       
+        // les envoyer en réponse
+        return $this->json($data);
     }
-
 
     /**
      * @Route("product/{id}", name="product_get", methods={"GET"})
@@ -120,7 +113,6 @@ class ProductController extends AbstractController
         
     }
 
-
     /**
      * @Route("/admin/products", name="product_post", methods={"POST"})
      * Create a product
@@ -171,4 +163,153 @@ class ProductController extends AbstractController
             ]);
         }
     }
+
+
+
+    /**
+     * @Route("/products/all/{page}", name="product_category_all", methods={"GET"})
+     * Display the products per page
+     */
+    public function getFiveLatestProducts () {
+
+    }
+
+
+    /**
+     * @Route("/products/all/{page}", name="product_category_all", methods={"GET"})
+     * Display the products per page
+     */
+    public function getAllProducts (ProductRepository $productRepository,Request $request,  PaginatorInterface $paginator, $page)
+    {
+        // 1) Récuperer les produits en bdd
+        $data = $productRepository->findAll();
+
+        $articles = $paginator->paginate(
+            $data, // Requête contenant les données à paginer (ici nos articles)
+            $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
+            9 // Nombre de résultats par page
+        );
+
+        // les envoyer en réponse
+        return $this->json($articles);
+    }
+
+
+    /**
+     * @Route("/products/maison/{page}", name="product_category_maison", methods={"GET"})
+     * Get the maison category products per page
+     */
+    public function MaisonProducts (ProductRepository $ProductRepository, Request $request,  PaginatorInterface $paginator, $page) {
+
+        $data = $ProductRepository->findBy(["category"=>"maison"]);
+
+        $articles = $paginator->paginate(
+            $data, // Requête contenant les données à paginer (ici nos articles)
+            $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
+            9 // Nombre de résultats par page
+        );
+
+        // les envoyer en réponse
+        return $this->json($articles);
+    }
+
+    /**
+     * @Route("/products/informatique/{page}", name="product_category_informatique", methods={"GET"})
+     * Get the informatique/high-tech category products per page
+     */
+    public function InformatiqueProducts (ProductRepository $ProductRepository,Request $request, PaginatorInterface $paginator , $page ) {
+
+        $data = $ProductRepository->findBy(["category"=>"informatique/high-tech"]);
+
+        $articles = $paginator->paginate(
+            $data, // Requête contenant les données à paginer (ici nos articles)
+            $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
+            9 // Nombre de résultats par page
+        );
+
+        // les envoyer en réponse
+        return $this->json($articles);
+    }
+
+    /**
+     * @Route("/products/sports/{page}", name="product_category_sports", methods={"GET"})
+     * Get the sports/vetements category products per page
+     */
+    public function SportsProducts (ProductRepository $ProductRepository,Request $request, PaginatorInterface $paginator , $page) {
+
+        $data = $ProductRepository->findBy(["category"=>"sports/vetements"]);
+
+        $articles = $paginator->paginate(
+            $data, // Requête contenant les données à paginer (ici nos articles)
+            $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
+            9 // Nombre de résultats par page
+        );
+
+        // les envoyer en réponse
+        return $this->json($articles);
+    }
+
+    /**
+     * @Route("/products/livres/{page}", name="product_category_livres", methods={"GET"})
+     * Get the livres category products per page
+     */
+    public function LivresProducts (ProductRepository $ProductRepository,Request $request, PaginatorInterface $paginator, $page ) {
+        $data = $ProductRepository->findBy(["category"=>"livres"]);
+
+        $articles = $paginator->paginate(
+            $data, // Requête contenant les données à paginer (ici nos articles)
+            $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
+            9 // Nombre de résultats par page
+        );
+
+        // $pageNumber = $articles->getTotalItemCount()/9;
+
+        // dd($articles);
+
+        // les envoyer en réponse
+        return $this->json($articles) ;
+
+    }
+
+
+    /**
+     * @Route("/products/{category}", name="product_category_number", methods={"GET"})
+     * Get the livres category products per page
+     */
+    public function getProductNumber (ProductRepository $ProductRepository,Request $request, PaginatorInterface $paginator, $category ) {
+        if($category === "informatique"){
+            $data = $ProductRepository->findBy(["category"=>"informatique/high-tech"]);
+            $count = count($data);
+            // $pageNumber = /
+            return $this->json($count);
+        }else if($category === "maison"){
+            $data = $ProductRepository->findBy(["category"=>"maison"]);
+            $count = count($data);
+            // $pageNumber = /
+            return $this->json($count);
+        }else if($category === "sports"){
+            $data = $ProductRepository->findBy(["category"=>"sports/vetements"]);
+            $count = count($data);
+            // $pageNumber = /
+            return $this->json($count);
+        }else if($category === "livres"){
+            $data = $ProductRepository->findBy(["category"=>"livres"]);
+            $count = count($data);
+            // $pageNumber = /
+            return $this->json($count);
+        }else if($category === "all"){
+            $data = $ProductRepository->findAll();
+            $count = count($data);
+            // $pageNumber = /
+            return $this->json($count);
+        }else {
+            return $this->json([
+                "status" => 400,
+                "erreur" => "Catégorie introuvable"
+            ]);
+        }
+        
+
+    }
+
 }

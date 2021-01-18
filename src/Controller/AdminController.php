@@ -3,17 +3,14 @@
 namespace App\Controller;
 
 use App\Entity\Product;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Response;
+use App\Repository\ProductRepository;
+use Knp\Component\Pager\PaginatorInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 class AdminController extends AbstractController
 {
-    /**
-     * @Route("/admin/home", name="admin_home", methods={"GET"})
-     */
-    public function index()
-    {
-        return $this->json(["admin" => "bienvenue"],200);
-    }
+    
+
 }
