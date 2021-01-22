@@ -60,7 +60,10 @@ class UserController extends AbstractController
                 return $this->json($errors,400);
             }
 
-            // 2) encryptage du password
+            // role user
+            $data->setRoles(["ROLE_USER"]);
+
+            //  encryptage du password
             $user = new User();
             $password = $data->getPassword(); // password qui doit etre crypté
             $passwordHashed = $encoder->encodePassword($user, $password);
@@ -87,67 +90,34 @@ class UserController extends AbstractController
     }
 
 
-    // /**
-    //  * @Route("/login", name="login", methods={"POST"})
-    //  * Connect to an account
-    //  */
-    // public function login(Request $request, SerializerInterface $serializerInterface, UserRepository $userRepository,UserPasswordEncoderInterface $encoder)
-    // {
-    //     // 1) reçoit les données de connexion
-    //     $json = $request->getContent();
-    //     $data = $serializerInterface->deserialize($json,User::class,"json");
+     /**
+     * @Route("verification", name="verification", methods={"POST"})
+     * return le role de l'utilisateur
+     */
+    public function getAdminConnected (UserRepository $repo,Request $request, SerializerInterface $serializerInterface) {
+        $json = $request->getContent();
+        $data = $serializerInterface->deserialize($json,User::class,"json");
+        $account = $repo->findBy(["email" => $data->getEmail()]);
 
-    //     // 2) vérifier que les données existes
-    //     // 2) vérification email existe
-    //     $email = $data->getEmail();
-    //     $targetedAccount = $userRepository->findOneBy(["email" => $email]);
+        $accountRole = $account[0]->getRoles()[0];
+        if($accountRole === "ROLE_USER"){
+            return $this->json([
+                "status" => 200,
+                "role" => "ROLE_USER"
+            ]);
+        }else if($accountRole === "ROLE_ADMIN"){
+            return $this->json([
+                "status" => 200,
+                "role" => "ROLE_ADMIN"
+            ]);
+        }else{
+            return $this->json([
+                "status" => 200,
+                "role" => "IS_NOT_AUTHENTICATED"
+            ]);
+        }
 
-    //     if($targetedAccount === null){
-    //         return $this->json([
-    //             "account" => "do not exist"
-    //         ],400);
-    //     }
-        
-    //     // 2) verifie que le password (décrypté) correspond à l'email
-    //     $password = $data->getPassword();
-    //     $targetedAccountPassword = $targetedAccount->getPassword();
-
-    //     $user = new User();
-    //     // if(password_verify( $password , $targetedAccountPassword )){
-    //     // dd($encoder->isPasswordValid($user, $password));
-    //     if(password_verify( $password , $targetedAccountPassword )){
-    //         // réponse sans le password
-    //         return $this->json([
-    //             "id" => $targetedAccount->getId(),
-    //             "email" => $targetedAccount->getEmail(),
-    //             "role" => $targetedAccount->getRole()
-    //         ],200);
-
-    //     }else{
-    //         return $this->json([
-    //             "account" => "wrong password"
-    //         ],400);
-    //     };
-
-    //     // 3) generer un token   
-    // }
-
-    // /**
-    //  * @Route("/api/login_check", name="login_check", methods={"POST"})
-    //  * Connect to an account
-    //  */
-    // public function checkLogin()
-    // {
-    //     // 1) on récupere les données
-    //     $user = $this->getUser();
-
-
-    //     // 2) on retourne le compte
-    //     return $this->json([
-    //         "email"=>$user->getEmail(),
-    //         "role"=>$user->getRole()
-    //     ],200);
-
-    // }
+       
+    }
 
 }

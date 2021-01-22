@@ -170,15 +170,6 @@ class ProductController extends AbstractController
      * @Route("/products/all/{page}", name="product_category_all", methods={"GET"})
      * Display the products per page
      */
-    public function getFiveLatestProducts () {
-
-    }
-
-
-    /**
-     * @Route("/products/all/{page}", name="product_category_all", methods={"GET"})
-     * Display the products per page
-     */
     public function getAllProducts (ProductRepository $productRepository,Request $request,  PaginatorInterface $paginator, $page)
     {
         // 1) Récuperer les produits en bdd
@@ -267,6 +258,7 @@ class ProductController extends AbstractController
         // dd($articles);
 
         // les envoyer en réponse
+        // { article: $articles, page: $page, count: $count}
         return $this->json($articles) ;
 
     }
