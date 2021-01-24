@@ -17,6 +17,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Serializer\Normalizer\PropertyNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Serializer\Exception\NotEncodableValueException;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 class ProductController extends AbstractController
 {
@@ -172,7 +173,7 @@ class ProductController extends AbstractController
      * @Route("/products/{category}/{page}", name="product_category_{category}", methods={"GET"})
      * Display the products per page from a specific category
      */
-    public function getCategoryProducts (ProductRepository $productRepository,Request $request,  PaginatorInterface $paginator, $category,$page)
+    public function getCategoryProducts (ProductRepository $productRepository,Request $request,  PaginatorInterface $paginator, NormalizerInterface $normalizerInterface, $category,$page)
     {
 
         // 1) Récuperer les produits en bdd
@@ -185,7 +186,7 @@ class ProductController extends AbstractController
         }else{
             $data = $productRepository->findBy(["category"=>$category]);
         }
-        
+
         $productsPerPage = 9;
         $allProducts = count($data);
         $pageNumber = ceil ($allProducts/$productsPerPage);
@@ -195,74 +196,21 @@ class ProductController extends AbstractController
             $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
             $productsPerPage // Nombre de résultats par page
         );
+        
        
-
-        // transformation !
-        $jsonArticles = $this->json($articles); // normalize
-
-        $objectAllProducts = $this->json($allProducts); //denormalize
-        $jsonAllProducts = $this->json($objectAllProducts); // serialize
-
-        $objectPageNumber = $this->json($pageNumber); //denormalize
-        $jsonPageNumber = $this->json($objectPageNumber); // serialize
-
+        // convertion des objets en tableaux
+        $array = $normalizerInterface->normalize($articles);
 
         // responses
         $response = new JsonResponse();
-        
-        $response1 = JsonResponse::fromJsonString($jsonAllProducts);
-        $response2 = JsonResponse::fromJsonString($jsonPageNumber);
-        $response3 = JsonResponse::fromJsonString($jsonArticles);
-       
+        $response->headers->set('Content-Type', 'application/json');
 
-
-        $allResponses = "{allProducts : $response1},  {pageNumber :$response2}, {data: $response3}";
+        // convertion des tableaux en json
+        $allResponses = json_encode(["productsPerPageNumber" => $productsPerPage,"category"=> $category ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "pageContent"=>$array]);
 
         $response->setContent($allResponses);
 
         return $response;
     }
-
-
-
-    // /**
-    //  * @Route("/products/{category}", name="product_category_number", methods={"GET"})
-    //  * Get the livres category products per page
-    //  */
-    // public function getProductNumber (ProductRepository $ProductRepository,Request $request, PaginatorInterface $paginator, $category ) {
-    //     if($category === "informatique"){
-    //         $data = $ProductRepository->findBy(["category"=>"informatique/high-tech"]);
-    //         $count = count($data);
-    //         // $pageNumber = /
-    //         return $this->json($count);
-    //     }else if($category === "maison"){
-    //         $data = $ProductRepository->findBy(["category"=>"maison"]);
-    //         $count = count($data);
-    //         // $pageNumber = /
-    //         return $this->json($count);
-    //     }else if($category === "sports"){
-    //         $data = $ProductRepository->findBy(["category"=>"sports/vetements"]);
-    //         $count = count($data);
-    //         // $pageNumber = /
-    //         return $this->json($count);
-    //     }else if($category === "livres"){
-    //         $data = $ProductRepository->findBy(["category"=>"livres"]);
-    //         $count = count($data);
-    //         // $pageNumber = /
-    //         return $this->json($count);
-    //     }else if($category === "all"){
-    //         $data = $ProductRepository->findAll();
-    //         $count = count($data);
-    //         // $pageNumber = /
-    //         return $this->json($count);
-    //     }else {
-    //         return $this->json([
-    //             "status" => 400,
-    //             "erreur" => "Catégorie introuvable"
-    //         ]);
-    //     }
-        
-
-    // }
 
 }
