@@ -18,6 +18,14 @@ class ProductRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Product::class);
     }
+    /**
+     *  Returns a sorted array of Product objects 
+     *
+    */
+    public function findSort($sort)
+    {
+        return $this->findBy(array(), array('price' => $sort));
+    }
 
     // /**
     //  * @return Product[] Returns an array of Product objects

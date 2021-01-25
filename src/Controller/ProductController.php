@@ -179,6 +179,7 @@ class ProductController extends AbstractController
         // 1) Récuperer les produits en bdd
         if($category === "all"){
             $data = $productRepository->findAll();
+
         }else if( $category === "sports"){
             $data = $productRepository->findBy(["category"=>"sports/vetements"]);
         }else if($category === "informatique"){
@@ -196,8 +197,8 @@ class ProductController extends AbstractController
             $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
             $productsPerPage // Nombre de résultats par page
         );
-        
-       
+
+
         // convertion des objets en tableaux
         $array = $normalizerInterface->normalize($articles);
 
@@ -211,6 +212,8 @@ class ProductController extends AbstractController
         $response->setContent($allResponses);
 
         return $response;
+        
+        
     }
 
 }

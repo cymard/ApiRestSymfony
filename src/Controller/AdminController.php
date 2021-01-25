@@ -15,22 +15,36 @@ class AdminController extends AbstractController
 {
 
     /**
-     * @Route("/admin/home/{category}/{page}", name="admin_product_category_{category}", methods={"GET"})
+     * @Route("/admin/home/{category}/{page}/{sort}", name="admin_product_category_{category}", methods={"GET"})
      * Display the products per page from a specific category
      */
-    public function getCategoryProducts (ProductRepository $productRepository,Request $request,  PaginatorInterface $paginator, NormalizerInterface $normalizerInterface, $category,$page)
+    public function getCategoryProducts (ProductRepository $productRepository,Request $request,  PaginatorInterface $paginator, NormalizerInterface $normalizerInterface, $category,$page, $sort)
     {
 
         // 1) Récuperer les produits en bdd
-        if($category === "all"){
-            $data = $productRepository->findAll();
-        }else if( $category === "sports"){
-            $data = $productRepository->findBy(["category"=>"sports/vetements"]);
-        }else if($category === "informatique"){
-            $data = $productRepository->findBy(["category"=>"informatique/high-tech"]);
-        }else{
-            $data = $productRepository->findBy(["category"=>$category]);
+        if($sort === "default"){
+            if($category === "all"){
+                $data = $productRepository->findAll();
+            }else if( $category === "sports"){
+                $data = $productRepository->findBy(["category"=>"sports/vetements"]);
+            }else if($category === "informatique"){
+                $data = $productRepository->findBy(["category"=>"informatique/high-tech"]);
+            }else{
+                $data = $productRepository->findBy(["category"=>$category]);
+            }
+        }else if($sort === "desc" || $sort === "asc"){
+            if($category === "all"){
+                $data = $productRepository->findSort($sort);
+            }else if( $category === "sports"){
+                $data = $productRepository->findBy(["category"=>"sports/vetements"],['price' => $sort]);
+            }else if($category === "informatique"){
+                $data = $productRepository->findBy(["category"=>"informatique/high-tech"],['price' => $sort]);
+            }else{
+                $data = $productRepository->findBy(["category"=>$category],['price' => $sort]);
+            }
+            
         }
+        
 
         $productsPerPage = 9;
         $allProducts = count($data);
@@ -41,8 +55,8 @@ class AdminController extends AbstractController
             $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
             $productsPerPage // Nombre de résultats par page
         );
-        
-       
+
+
         // convertion des objets en tableaux
         $array = $normalizerInterface->normalize($articles);
 
@@ -56,6 +70,9 @@ class AdminController extends AbstractController
         $response->setContent($allResponses);
 
         return $response;
+        
+
+        
     }
 
     
