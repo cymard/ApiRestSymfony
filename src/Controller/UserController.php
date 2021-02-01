@@ -90,34 +90,4 @@ class UserController extends AbstractController
     }
 
 
-     /**
-     * @Route("verification", name="verification", methods={"POST"})
-     * return le role de l'utilisateur
-     */
-    public function getAdminConnected (UserRepository $repo,Request $request, SerializerInterface $serializerInterface) {
-        $json = $request->getContent();
-        $data = $serializerInterface->deserialize($json,User::class,"json");
-        $account = $repo->findBy(["email" => $data->getEmail()]);
-
-        $accountRole = $account[0]->getRoles()[0];
-        if($accountRole === "ROLE_USER"){
-            return $this->json([
-                "status" => 200,
-                "role" => "ROLE_USER"
-            ]);
-        }else if($accountRole === "ROLE_ADMIN"){
-            return $this->json([
-                "status" => 200,
-                "role" => "ROLE_ADMIN"
-            ]);
-        }else{
-            return $this->json([
-                "status" => 200,
-                "role" => "IS_NOT_AUTHENTICATED"
-            ]);
-        }
-
-       
-    }
-
 }
