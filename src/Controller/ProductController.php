@@ -6,15 +6,12 @@ use App\Entity\Product;
 use App\Repository\ProductRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Knp\Component\Pager\PaginatorInterface;
-use Symfony\Component\Serializer\Serializer;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
-use Symfony\Component\Serializer\Normalizer\PropertyNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -22,18 +19,18 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 class ProductController extends AbstractController
 {
 
-    /**
-     * @Route("/products", name="products", methods={"GET"})
-     * Display the products
-     */
-    public function getProducts (ProductRepository $productRepository, SerializerInterface $serializerInterface ,Request $request,  PaginatorInterface $paginator)
-    {
-        // 1) Récuperer les produits en bdd
-        $data = $productRepository->findAll();
+    // /**
+    //  * @Route("/products", name="products", methods={"GET"})
+    //  * Display the products
+    //  */
+    // public function getProducts (ProductRepository $productRepository, SerializerInterface $serializerInterface ,Request $request,  PaginatorInterface $paginator)
+    // {
+    //     // 1) Récuperer les produits en bdd
+    //     $data = $productRepository->findAll();
        
-        // les envoyer en réponse
-        return $this->json($data);
-    }
+    //     // les envoyer en réponse
+    //     return $this->json($data);
+    // }
 
     /**
      * @Route("product/{id}", name="product_get", methods={"GET"})
@@ -170,50 +167,54 @@ class ProductController extends AbstractController
 
 
     /**
-     * @Route("/products/{category}/{page}", name="product_category_{category}", methods={"GET"})
+     * @Route("/products", name="product_category", methods={"GET"})
      * Display the products per page from a specific category
      */
-    public function getCategoryProducts (ProductRepository $productRepository,Request $request,  PaginatorInterface $paginator, NormalizerInterface $normalizerInterface, $category,$page)
+    public function getCategoryProducts (ProductRepository $productRepository,Request $request,  PaginatorInterface $paginator, NormalizerInterface $normalizerInterface)
     {
+        if( $request->query->get('category') &&$request->query->get('page') ){
 
-        // 1) Récuperer les produits en bdd
-        if($category === "all"){
-            $data = $productRepository->findAll();
+            $category = $request->query->get("category");
+            $page = (int)$request->query->get("page");
 
-        }else if( $category === "sports"){
-            $data = $productRepository->findBy(["category"=>"sports/vetements"]);
-        }else if($category === "informatique"){
-            $data = $productRepository->findBy(["category"=>"informatique/high-tech"]);
-        }else{
-            $data = $productRepository->findBy(["category"=>$category]);
+            // 1) Récuperer les produits en bdd
+            if($category === "all"){
+                $data = $productRepository->findAll();
+
+            }else if( $category === "sports"){
+                $data = $productRepository->findBy(["category"=>"sports/vetements"]);
+            }else if($category === "informatique"){
+                $data = $productRepository->findBy(["category"=>"informatique/high-tech"]);
+            }else{
+                $data = $productRepository->findBy(["category"=>$category]);
+            }
+
+            $productsPerPage = 9;
+            $allProducts = count($data);
+            $pageNumber = ceil ($allProducts/$productsPerPage);
+
+            $articles = $paginator->paginate(
+                $data, // Requête contenant les données à paginer (ici nos articles)
+                $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
+                $productsPerPage // Nombre de résultats par page
+            );
+
+
+            // convertion des objets en tableaux
+            $array = $normalizerInterface->normalize($articles);
+
+            // responses
+            $response = new JsonResponse();
+            $response->headers->set('Content-Type', 'application/json');
+
+            // convertion des tableaux en json
+            $allResponses = json_encode(["productsPerPageNumber" => $productsPerPage,"category"=> $category ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "pageContent"=>$array]);
+
+            $response->setContent($allResponses);
+
+            return $response;
+        
         }
-
-        $productsPerPage = 9;
-        $allProducts = count($data);
-        $pageNumber = ceil ($allProducts/$productsPerPage);
-
-        $articles = $paginator->paginate(
-            $data, // Requête contenant les données à paginer (ici nos articles)
-            $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
-            $productsPerPage // Nombre de résultats par page
-        );
-
-
-        // convertion des objets en tableaux
-        $array = $normalizerInterface->normalize($articles);
-
-        // responses
-        $response = new JsonResponse();
-        $response->headers->set('Content-Type', 'application/json');
-
-        // convertion des tableaux en json
-        $allResponses = json_encode(["productsPerPageNumber" => $productsPerPage,"category"=> $category ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "pageContent"=>$array]);
-
-        $response->setContent($allResponses);
-
-        return $response;
-        
-        
     }
 
 }

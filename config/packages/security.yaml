@@ -3,6 +3,10 @@ security:
         App\Entity\User:
             algorithm: 'bcrypt'
             cost: 12
+        App\Entity\UserAdmin:
+            algorithm: 'bcrypt'
+            cost: 12
+
 
     # https://symfony.com/doc/current/security.html#where-do-users-come-from-user-providers
     providers:
@@ -10,6 +14,12 @@ security:
             entity:
                 class: App\Entity\User
                 property: email
+        app_user_admin_provider:
+            entity:
+                class: App\Entity\UserAdmin
+                property: email
+
+        # used to reload user from session & other features (e.g. switch_user)
 
     firewalls:
         dev:
@@ -20,8 +30,20 @@ security:
             pattern: ^/api/login
             stateless: true
             anonymous: true
+            provider: app_user_provider
             json_login:
                 check_path: /api/login_check
+                username_path: email
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+        
+        login_admin:
+            pattern: ^/admin/login
+            stateless: true
+            anonymous: true
+            provider: app_user_admin_provider
+            json_login:
+                check_path: /admin/login_admin_check
                 username_path: email
                 success_handler: lexik_jwt_authentication.handler.authentication_success
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
@@ -35,6 +57,15 @@ security:
                 authenticators:
                     - lexik_jwt_authentication.jwt_token_authenticator
         
+        api_admin:
+            pattern: ^/admin
+            stateless: true
+            anonymous: true
+            provider: app_user_admin_provider
+            guard:
+                authenticators:
+                    - lexik_jwt_authentication.jwt_token_authenticator
+        
         main:
             anonymous: true
             lazy: true
@@ -44,6 +75,10 @@ security:
     # Note: Only the *first* access control that matches will be used
     access_control:
         - { path: ^/api/login_check, roles: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/admin/login_admin_check, roles: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/admin/login, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
-        # - { path: '^/admin', roles: [ROLE_ADMIN] }
+        - { path: ^/admin, roles: ROLE_ADMIN }
         # ROLE_ADMIN
+
+
