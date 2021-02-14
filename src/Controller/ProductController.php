@@ -67,7 +67,7 @@ class ProductController extends AbstractController
     }
 
     /**
-     * @Route("/admin/product/{id}", name="product_put", methods={"PUT"})
+     * @Route("/admin/product/{id}/edit", name="product_put", methods={"PUT"})
      * Modify a product
      */
     public function setProduct (Product $product, Request $request, SerializerInterface $serializerInterface,EntityManagerInterface $em, ValidatorInterface $validator)
@@ -77,7 +77,7 @@ class ProductController extends AbstractController
             // 1) recuperer le produit modifié
             $json = $request->getContent();
             $newProduct = $serializerInterface->deserialize($json,Product::class,"json");
-
+ 
             // 2) validation des données reçues
             $errors = $validator->validate($newProduct);
 
@@ -98,6 +98,7 @@ class ProductController extends AbstractController
             $product->setPrice($newProduct->getPrice());
             $product->setDescription($newProduct->getDescription());
             $product->setImage($newProduct->getImage());
+            $product->setStock($newProduct->getStock());
 
             // 5) Envoyer vers la bdd
             $em->persist($product);
@@ -105,6 +106,7 @@ class ProductController extends AbstractController
 
             // 6) retourner le produit modifié
             return $this->json($product, 201);
+
         }catch(NotEncodableValueException $e){
             return $this->json([
                 "status" => 400,
@@ -165,36 +167,49 @@ class ProductController extends AbstractController
         }
     }
 
+    private function getCategory(string $category){
+        if($category === "sports"){
+            $category = "sports/vetements";
+        }else if ($category === "informatique"){
+            $category = "informatique/high-tech";
+        }
+
+        return $category;
+    }
+
 
     /**
      * @Route("/products", name="product_category", methods={"GET"})
      * Display the products per page from a specific category
      */
-    public function getCategoryProducts (ProductRepository $productRepository,Request $request,  PaginatorInterface $paginator, NormalizerInterface $normalizerInterface)
+    public function getCategoryProducts (EntityManagerInterface $em,ProductRepository $productRepository,Request $request,  PaginatorInterface $paginator, NormalizerInterface $normalizerInterface)
     {
         if( $request->query->get('category') &&$request->query->get('page') ){
 
-            $category = $request->query->get("category");
+            $category = $this->getCategory($request->query->get("category"));
             $page = (int)$request->query->get("page");
+
 
             // 1) Récuperer les produits en bdd
             if($category === "all"){
-                $data = $productRepository->findAll();
-
-            }else if( $category === "sports"){
-                $data = $productRepository->findBy(["category"=>"sports/vetements"]);
-            }else if($category === "informatique"){
-                $data = $productRepository->findBy(["category"=>"informatique/high-tech"]);
+                // $data = $productRepository->findAll();
+                $query = $em->createQuery(
+                    'SELECT u FROM App\Entity\Product u'
+                );
             }else{
-                $data = $productRepository->findBy(["category"=>$category]);
+                // $data = $productRepository->findBy(["category"=>$category]);
+                $query = $em->createQuery(
+                    'SELECT u FROM App\Entity\Product u WHERE u.category = :category'
+                )->setParameter('category' , $category);
             }
 
+
             $productsPerPage = 9;
-            $allProducts = count($data);
+            $allProducts = count($query->getResult());
             $pageNumber = ceil ($allProducts/$productsPerPage);
 
             $articles = $paginator->paginate(
-                $data, // Requête contenant les données à paginer (ici nos articles)
+                $query->getResult(), // Requête contenant les données à paginer (ici nos articles)
                 $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
                 $productsPerPage // Nombre de résultats par page
             );
