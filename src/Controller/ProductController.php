@@ -67,7 +67,7 @@ class ProductController extends AbstractController
     }
 
     /**
-     * @Route("/admin/product/{id}", name="product_put", methods={"PUT"})
+     * @Route("/admin/product/{id}/edit", name="product_put", methods={"PUT"})
      * Modify a product
      */
     public function setProduct (Product $product, Request $request, SerializerInterface $serializerInterface,EntityManagerInterface $em, ValidatorInterface $validator)
@@ -77,7 +77,7 @@ class ProductController extends AbstractController
             // 1) recuperer le produit modifié
             $json = $request->getContent();
             $newProduct = $serializerInterface->deserialize($json,Product::class,"json");
-
+ 
             // 2) validation des données reçues
             $errors = $validator->validate($newProduct);
 
@@ -98,6 +98,7 @@ class ProductController extends AbstractController
             $product->setPrice($newProduct->getPrice());
             $product->setDescription($newProduct->getDescription());
             $product->setImage($newProduct->getImage());
+            $product->setStock($newProduct->getStock());
 
             // 5) Envoyer vers la bdd
             $em->persist($product);
@@ -105,6 +106,7 @@ class ProductController extends AbstractController
 
             // 6) retourner le produit modifié
             return $this->json($product, 201);
+
         }catch(NotEncodableValueException $e){
             return $this->json([
                 "status" => 400,
