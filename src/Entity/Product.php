@@ -70,12 +70,11 @@ class Product
     /**
      * @ORM\Column(type="integer")
      * @Assert\PositiveOrZero
-     * @Groups({"productWithoutComments"})
      */
     private $stock;
 
     /**
-     * @ORM\OneToMany(targetEntity=Comment::class, mappedBy="product")
+     * @ORM\OneToMany(targetEntity=Comment::class, mappedBy="product", orphanRemoval=true)
      * @ORM\JoinColumn(nullable=false)
      * @Groups({"onlyComments"})
      */

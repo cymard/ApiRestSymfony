@@ -15,7 +15,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
-
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 
@@ -31,14 +30,16 @@ class ProductController extends AbstractController
     {
        
         // Le product
-        $productArrayFormat = $normalizerInterface->normalize($product,null,["groups" => "productWithoutComments"]);
-    
+        $productInArrayFormat = $normalizerInterface->normalize($product,null,["groups" => "productWithoutComments"]);
+       
+
         // Les commentaires
-        $collection = $product->getComments();
-        $commentsObjectFormat = $collection->toArray(); // les commentaires sont sous forme d'objet
+        $commentsInCollectionFormat = $product->getComments();
+       
+        $commentsInObjectFormat = $commentsInCollectionFormat->toArray();
         $commentsNormalized = []; 
 
-        foreach ($commentsObjectFormat as $comment) {
+        foreach ($commentsInObjectFormat as $comment) {
 
             $comment = $normalizerInterface->normalize($comment, null , ["groups" => "commentWithoutProduct"]); // fait passer les objets sous forme de tableaux
 
@@ -47,7 +48,7 @@ class ProductController extends AbstractController
 
 
 
-        $allDataJson = json_encode(["product" => $productArrayFormat, "comments" => $commentsNormalized]); 
+        $allDataJson = json_encode(["product" => $productInArrayFormat, "comments" => $commentsNormalized]); 
 
 
         // La réponse en json
@@ -86,10 +87,10 @@ class ProductController extends AbstractController
         try{
             // 1) recuperer le produit modifié
             $json = $request->getContent();
-            $newProduct = $serializerInterface->deserialize($json,Product::class,"json");
+            $newProduct = $serializerInterface->deserialize($json,Product::class,"json",["groups" => "productWithoutComments"]);
  
             // 2) validation des données reçues
-            $errors = $validator->validate($newProduct);
+            $errors = $validator->validate($newProduct,null,["groups" => "productWithoutComments"]);
 
             if (count($errors) > 0) {
                 /*
@@ -159,7 +160,7 @@ class ProductController extends AbstractController
             $em->flush();
 
             // 5) retourner le produit créé
-            $dataSerialized = $serializerInterface->serialize($data,"json");
+            $dataSerialized = $serializerInterface->serialize($data,"json",["groups" => "commentWithoutProduct"]);
 
             
             $response = new Response();
@@ -203,12 +204,12 @@ class ProductController extends AbstractController
             if($category === "all"){
                 // $data = $productRepository->findAll();
                 $query = $em->createQuery(
-                    'SELECT u FROM App\Entity\Product u'
+                    'SELECT product FROM App\Entity\Product product'
                 );
             }else{
                 // $data = $productRepository->findBy(["category"=>$category]);
                 $query = $em->createQuery(
-                    'SELECT u FROM App\Entity\Product u WHERE u.category = :category'
+                    'SELECT product FROM App\Entity\Product product WHERE product.category = :category'
                 )->setParameter('category' , $category);
             }
 
@@ -217,15 +218,17 @@ class ProductController extends AbstractController
             $allProducts = count($query->getResult());
             $pageNumber = ceil ($allProducts/$productsPerPage);
 
+
             $articles = $paginator->paginate(
-                $query->getResult(), // Requête contenant les données à paginer (ici nos articles)
+                $query, // Requête contenant les données à paginer (ici nos articles)
                 $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
                 $productsPerPage // Nombre de résultats par page
+
             );
 
-
+  
             // convertion des objets en tableaux
-            $array = $normalizerInterface->normalize($articles);
+            $array = $normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
 
             // responses
             $response = new JsonResponse();

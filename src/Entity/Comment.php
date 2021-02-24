@@ -2,9 +2,11 @@
 
 namespace App\Entity;
 
-use App\Repository\CommentRepository;
+use DateTime;
 use Doctrine\ORM\Mapping as ORM;
+use App\Repository\CommentRepository;
 use Symfony\Component\Serializer\Annotation\Groups;
+
 
 /**
  * @ORM\Entity(repositoryClass=CommentRepository::class)
@@ -32,23 +34,50 @@ class Comment
     private $content;
 
     /**
-     * @ORM\Column(type="datetime", nullable=true)
-     * @Groups({"commentWithoutProduct"})
-     */
-    private $date;
-
-    /**
      * @ORM\Column(type="integer")
      * @Groups({"commentWithoutProduct"})
      */
     private $note;
+    
+    /**
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"commentWithoutProduct"})
+     */
+    private $title;
 
     /**
+     * @ORM\Column(type="datetime")
+     * @Groups({"commentWithoutProduct"})
+     */
+    protected $date;
+    
+    /**
      * @ORM\ManyToOne(targetEntity=Product::class)
-     * @ORM\JoinColumn(nullable=false)
+     * @ORM\JoinColumn(nullable=true)
      */
     private $product;
 
+    /**
+     * @ORM\Column(type="boolean")
+     */
+    private $isReported;
+
+    public function __construct()
+    {
+        $this->date = new DateTime(); 
+    }
+
+    public function getTitle(): ?string
+    {
+        return $this->title;
+    }
+
+    public function setTitle(string $title): self
+    {
+        $this->title = $title;
+
+        return $this;
+    }
 
     public function getId(): ?int
     {
@@ -79,17 +108,6 @@ class Comment
         return $this;
     }
 
-    public function getDate(): ?\DateTimeInterface
-    {
-        return $this->date;
-    }
-
-    public function setDate(?\DateTimeInterface $date): self
-    {
-        $this->date = $date;
-
-        return $this;
-    }
 
     public function getNote(): ?int
     {
@@ -108,10 +126,40 @@ class Comment
         return $this->product;
     }
 
+
     public function setProduct(?Product $product): self
     {
         $this->product = $product;
 
         return $this;
     }
+
+
+    public function getDate(): ?\DateTimeInterface
+    {
+        return $this->date;
+    }
+
+    public function setDate(?\DateTimeInterface $date): self
+    {
+        $this->date = $date;
+
+        return $this;
+    }
+
+    public function getIsReported(): ?bool
+    {
+        return $this->isReported;
+    }
+
+    public function setIsReported(bool $isReported): self
+    {
+        $this->isReported = $isReported;
+
+        return $this;
+    }
+
+
 }
+
+
