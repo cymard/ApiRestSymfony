@@ -21,25 +21,11 @@ use App\Repository\CommentRepository;
 
 class CommentController extends AbstractController
 {
-    /**
-     * @Route("/comment", name="comment")
-     */
-    public function index(): Response
-    {
-        return $this->render('comment/index.html.twig', [
-            'controller_name' => 'CommentController',
-        ]);
-    }
 
     /**
      * @Route("/admin/product/{id}/comments", name="product_comments", methods={"GET"})
      */
     public function getCommentsOfAProduct(Product $product, NormalizerInterface $normalizerInterface){
-
-
-        // je reçois l'id
-        // retrouver le product correspondant à l'id
-        // afficher les comments du product
 
         $allCommentsCollection = $product->getComments();
         $allCommentsArray = $allCommentsCollection->toArray();
@@ -47,7 +33,7 @@ class CommentController extends AbstractController
 
         foreach($allCommentsArray as $comment){
             $commentJson  = $normalizerInterface->normalize($comment, "json",["groups" => "commentWithoutProduct"]);
-            array_push($allCommentsJson, $commentJson);
+            array_unshift($allCommentsJson, $commentJson);
         }
 
         $response = new Response();
@@ -178,7 +164,7 @@ class CommentController extends AbstractController
         foreach ($commentsObject as $comment) {
             // normalize le product et push
             $commentArray = $normalizerInterface->normalize($comment,"json", ["groups" => "commentWithoutProduct"]);
-            array_push($commentsArray, $commentArray);
+            array_unshift($commentsArray, $commentArray);
             
         }
 

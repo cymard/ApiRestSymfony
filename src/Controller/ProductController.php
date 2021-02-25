@@ -35,15 +35,14 @@ class ProductController extends AbstractController
 
         // Les commentaires
         $commentsInCollectionFormat = $product->getComments();
-       
         $commentsInObjectFormat = $commentsInCollectionFormat->toArray();
         $commentsNormalized = []; 
 
         foreach ($commentsInObjectFormat as $comment) {
-
+            // dd($comment);
             $comment = $normalizerInterface->normalize($comment, null , ["groups" => "commentWithoutProduct"]); // fait passer les objets sous forme de tableaux
-
-            array_push($commentsNormalized, $comment);
+            // dd($comment["date"]);
+            array_unshift($commentsNormalized, $comment);
         }
 
 
