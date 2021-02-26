@@ -86,7 +86,7 @@ class AdminController extends AbstractController
             $allProducts = count($query->getResult());
             $productsPerPage = 9;
             $pageNumber = ceil ($allProducts/$productsPerPage);
-
+            
 
             $articles = $paginator->paginate(
                 $query, // query

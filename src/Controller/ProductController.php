@@ -21,6 +21,24 @@ use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 
 class ProductController extends AbstractController
 {
+    /**
+     * Averaging of an array
+     */
+    private function averaging(array $array) 
+    {
+        $rateNumber = count($array);
+
+        // $averaging = 
+        $sum = 0;
+
+        foreach($array as $number){
+            $sum += $number;
+        }
+
+        $averaging = $sum/$rateNumber;
+
+        return $averaging;
+    }
 
     /**
      * @Route("/product/{id}", name="product_get", methods={"GET"})
@@ -37,19 +55,31 @@ class ProductController extends AbstractController
         $commentsInCollectionFormat = $product->getComments();
         $commentsInObjectFormat = $commentsInCollectionFormat->toArray();
         $commentsNormalized = []; 
+        
+        // l'ensemble des notes de commentaires du produit sur 5
+        $allRates = [];
 
         foreach ($commentsInObjectFormat as $comment) {
             // dd($comment);
+            array_unshift($allRates, $comment->getNote());
             $comment = $normalizerInterface->normalize($comment, null , ["groups" => "commentWithoutProduct"]); // fait passer les objets sous forme de tableaux
             // dd($comment["date"]);
             array_unshift($commentsNormalized, $comment);
         }
 
-
-
-        $allDataJson = json_encode(["product" => $productInArrayFormat, "comments" => $commentsNormalized]); 
-
-
+        // calcul de la moyenne des notes des commentaires
+        if(count($allRates) > 0){
+            $averaging = $this->averaging($allRates);
+            $rateNumber = count($allRates);
+    
+            $allDataJson = json_encode(["product" => $productInArrayFormat, "comments" => $commentsNormalized, "averaging" => $averaging, "rateNumber" => $rateNumber]); 
+        }else{
+    
+            $allDataJson = json_encode(["product" => $productInArrayFormat, "comments" => $commentsNormalized, "averaging" => 0, "rateNumber" => 0]); 
+    
+        }
+        
+       
         // La réponse en json
         $response = new Response();
         $response->setContent($allDataJson);

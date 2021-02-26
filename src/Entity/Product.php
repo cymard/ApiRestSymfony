@@ -70,6 +70,7 @@ class Product
     /**
      * @ORM\Column(type="integer")
      * @Assert\PositiveOrZero
+     * @Groups({"productWithoutComments"})
      */
     private $stock;
 

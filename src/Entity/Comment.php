@@ -67,11 +67,6 @@ class Comment
         $this->date = new DateTime();
     }
 
-    // public function getFormatedDate (): ?\DateTimeInterface
-    // {
-
-    // }
-
     public function getTitle(): ?string
     {
         return $this->title;
@@ -143,12 +138,8 @@ class Comment
     public function getDate()
     {
         // :?\DateTimeInterface
-
-        
         $dateTime = $this->date; // objet datetime sous format iso8601
         $theDate = $dateTime->format('d/m/y à H:i:s'); // changement de format
-    //     setlocale("LC_ALL", 'fr_FR');
-    //    dd(setlocale($theDate, "fr_FR")) ;
         return $theDate;
 
     }
