@@ -8,11 +8,12 @@ use App\Repository\ProductRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Knp\Component\Pager\PaginatorInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Serializer\SerializerInterface;
 
 class AdminController extends AbstractController
 {
@@ -46,11 +47,11 @@ class AdminController extends AbstractController
             if($sort === "default"){
                 if($category === "all"){
                     $query = $em->createQuery(
-                        'SELECT p FROM App\Entity\Product p'
+                        'SELECT product FROM App\Entity\Product product'
                     );
                 }else{
                     $query = $em->createQuery(
-                        'SELECT p FROM App\Entity\Product p WHERE p.category = :category'
+                        'SELECT product FROM App\Entity\Product product WHERE product.category = :category'
                     )->setParameter('category' , $category);
                 }
                 
@@ -59,22 +60,22 @@ class AdminController extends AbstractController
                 if($category === "all"){
                     if($sort === "asc"){
                         $query = $em->createQuery(
-                            'SELECT p FROM App\Entity\Product p ORDER BY p.price ASC'
+                            'SELECT product FROM App\Entity\Product product ORDER BY product.price ASC'
                         );
                     }else{
                         $query = $em->createQuery(
-                            'SELECT p FROM App\Entity\Product p ORDER BY p.price DESC'
+                            'SELECT product FROM App\Entity\Product product ORDER BY product.price DESC'
                         );
                     }
                 }else{
                     
                     if($sort === "asc"){
                         $query = $em->createQuery(
-                            'SELECT p FROM App\Entity\Product p WHERE p.category = :category ORDER BY p.price ASC'
+                            'SELECT product FROM App\Entity\Product product WHERE product.category = :category ORDER BY product.price ASC'
                         )->setParameter('category' , $category);
                     }else{
                         $query = $em->createQuery(
-                            'SELECT p FROM App\Entity\Product p WHERE p.category = :category ORDER BY p.price DESC'
+                            'SELECT product FROM App\Entity\Product product WHERE product.category = :category ORDER BY product.price DESC'
                         )->setParameter('category' , $category);
                     }
 
@@ -85,7 +86,7 @@ class AdminController extends AbstractController
             $allProducts = count($query->getResult());
             $productsPerPage = 9;
             $pageNumber = ceil ($allProducts/$productsPerPage);
-
+            
 
             $articles = $paginator->paginate(
                 $query, // query
@@ -95,7 +96,7 @@ class AdminController extends AbstractController
 
             // dd($articles);
             // convertion des objets en tableaux
-            $array = $normalizerInterface->normalize($articles);
+            $array = $normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
  
             // responses
             $response = new JsonResponse();
@@ -114,9 +115,32 @@ class AdminController extends AbstractController
 
         }
 
-
-        
     }
+
+    /**
+     * @Route("/admin/product", name="admin_delete_product", methods={"DELETE"})
+     * Delete products
+     */
+    public function deleteProduct(Request $request, ProductRepository $repo, EntityManagerInterface $entityManager){
+        $json = $request->getContent();
+        $idToDelete = json_decode ( $json );
+
+        foreach($idToDelete->data as $id ){
+            // identifier le produit
+
+            $product = $repo->find($id);
+
+            // le delete
+            $entityManager->remove($product);
+            $entityManager->flush();
+
+        }
+
+        $response = new JsonResponse(['status' => 202,'message' => 'All products deleted']);
+        return $response;
+    }
+
+
 
 
 }

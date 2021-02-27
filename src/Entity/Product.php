@@ -3,9 +3,12 @@
 namespace App\Entity;
 
 use App\Repository\ProductRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * @ORM\Entity(repositoryClass=ProductRepository::class)
@@ -16,6 +19,7 @@ class Product
      * @ORM\Id
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
+     * @Groups({"productWithoutComments"})
      */
     private $id;
 
@@ -28,24 +32,27 @@ class Product
      *      minMessage = "Your first name must be at least {{ limit }} characters long",
      *      maxMessage = "Your first name cannot be longer than {{ limit }} characters"
      * )
+     * @Groups({"productWithoutComments"})
      */
     private $price;
     
     /**
      * @ORM\Column(type="text", nullable=true)
-     *
+     * @Groups({"productWithoutComments"})
      */
     private $image;
 
     /**
      * @ORM\Column(type="text")
      * @Assert\NotBlank
+     * @Groups({"productWithoutComments"})
      */
     private $description;
 
     /**
      * @ORM\Column(type="string", length=255)
      * @Assert\NotBlank
+     * @Groups({"productWithoutComments"})
      */
     private $name;
 
@@ -56,14 +63,28 @@ class Product
      *     choices = { "sports/vetements", "livres", "maison", "informatique/high-tech" },
      *     message = "Choisissez une catégorie valide."
      * )
+     * @Groups({"productWithoutComments"})
      */
     private $category;
 
     /**
      * @ORM\Column(type="integer")
      * @Assert\PositiveOrZero
+     * @Groups({"productWithoutComments"})
      */
     private $stock;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Comment::class, mappedBy="product", orphanRemoval=true)
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"onlyComments"})
+     */
+    private $comments;
+
+    public function __construct()
+    {
+        $this->comments = new ArrayCollection();
+    }
 
 
     public function getId(): ?int
@@ -140,6 +161,36 @@ class Product
     public function setStock(int $stock): self
     {
         $this->stock = $stock;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection|Comment[]
+     */
+    public function getComments(): Collection
+    {
+        return $this->comments;
+    }
+
+    public function addComment(Comment $comment): self
+    {
+        if (!$this->comments->contains($comment)) {
+            $this->comments[] = $comment;
+            $comment->setProduct($this);
+        }
+
+        return $this;
+    }
+
+    public function removeComment(Comment $comment): self
+    {
+        if ($this->comments->removeElement($comment)) {
+            // set the owning side to null (unless already changed)
+            if ($comment->getProduct() === $this) {
+                $comment->setProduct(null);
+            }
+        }
 
         return $this;
     }
