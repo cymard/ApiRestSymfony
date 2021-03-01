@@ -2,12 +2,18 @@
 
 namespace App\Controller;
 
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use App\Entity\CartProduct;
+use App\Entity\User;
+use App\Repository\UserRepository;
+use App\Repository\ProductRepository;
+use App\Repository\CartProductRepository;
+use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use App\Repository\ShoppingCartRepository;
 use Symfony\Component\Serializer\SerializerInterface;
-use App\Repository\ProductRepository;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 class ShoppingCartController extends AbstractController
 {
@@ -22,20 +28,87 @@ class ShoppingCartController extends AbstractController
     }
 
     /**
-     * @Route("/api/cart/products", name="diplay_cart_products", methods={"GET"})
+     * @Route("/api/cart/product/{id}", name="add_product_cart", methods={"POST"})
+     * add a product to cartProduct
      */
-    public function getShoppingCartProducts(ShoppingCartRepository $repo, ProductRepository $productRepo)
+    public function addProductToCart($id,Request $request, UserRepository $userRepository, EntityManagerInterface $em, SerializerInterface $serializerInterface)
     {
-        // recup données
-        $data = $repo->findAll();
-        
+        $dataJson = $request->getContent();
+
+        // je recois l'id du user au lieu de l'id du shoppingCart
+        $dataStdClass = json_decode($dataJson); // class standard
+
+        // conversion sous forme de tableau pour avoir accès aux données
+        $dataArray = (array) $dataStdClass; 
+
+        // trouver le user correspondant
+        $email = $dataArray["email"];
+        $emailOfUser = $userRepository->findBy(["email" => $email]);
+        $user = $emailOfUser[0];
+
+        // trouver le shoppingCart correspondant
+        $shoppingCart = $user->getShoppingCart();
+        $shoppingCartId = $shoppingCart->getId();
+      
+
+        // envoyer le produit dans le cartProduct
+  
+        $cartProduct = new CartProduct();
+        //  $productId
+        $cartProduct->setProductId($id);
+        //  $quantity
+        $cartProduct->setQuantity($dataArray["quantity"]);
+        //  $shoppingCartId
+        $cartProduct->setShoppingCartId($shoppingCartId);
+
+        $em->persist($cartProduct);
+        $em->flush();
+
+       
+
+        // réponse
+        $cartProductJson = $serializerInterface->serialize($cartProduct, "json", ["groups" => "cartProductWithoutRelation"]);
+
+        $response = new Response();
+        $response->setContent($cartProductJson);
+        $response->headers->set('Content-type','application/json');
+        $response->setStatusCode(Response::HTTP_OK);
+        return $response;
+    }
+
+    /**
+     * @Route("/api/cart/products", name="diplay_cart_products", methods={"POST"})
+     * Display content of a shoppingCart
+     */
+    public function getShoppingCartProducts(Request $request, UserRepository $userRepo, CartProductRepository $cartProductRepository ,ProductRepository $productRepo)
+    {
+        $dataJson = $request->getContent();
+
+        // recuperer le nom du user
+        $dataStdClass = json_decode($dataJson);
+        $dataArray = (array) $dataStdClass;
+        $userEmail = $dataArray["email"];
+
+        // trouver le comtpe du user correspondant
+        $userArray = $userRepo->findBy(["email" => $userEmail]);
+        $user = $userArray[0];
+
+        // avec le user trouver le shoppingCart correspondant
+        $shoppingCart = $user->getShoppingCart();
+        $shoppingCartId = $shoppingCart->getId();
+
+        // trouver tous les products avec id du shoppingCart dans CartProduct
+        $allProductsArray = $cartProductRepository->findBy(["shoppingCartId" => $shoppingCartId]);
+
+        // les afficher 
+
         $totalPrice = 0;
         $allProducts = [];
         $totalArticles = 0;
 
-        foreach($data as $product){
+        foreach($allProductsArray as $product){
 
-            $productInformations = $productRepo->findBy(["id" => $product->getId()]);
+            $productInformations = $productRepo->findBy(["id" => $product->getProductId()]);
             
 
             // App\Entity\Product {#1037
@@ -50,6 +123,7 @@ class ShoppingCartController extends AbstractController
             //   }
 
             $productData = [
+                "id" => $productInformations[0]->getId(),
                 "title" => $productInformations[0]->getName(), 
                 "price" => $productInformations[0]->getPrice(),
                 "image" => $productInformations[0]->getImage(),
@@ -74,11 +148,5 @@ class ShoppingCartController extends AbstractController
         return $response;
     }
 
-    /**
-     * @Route("/api/cart/product/{}", name="add_product_cart", methods={"POST"})
-     */
-    public function addProductToCart(){
 
-    }
-    
 }

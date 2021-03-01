@@ -45,6 +45,12 @@ class User implements UserInterface
      */
     private $password;
 
+    /**
+     * @ORM\OneToOne(targetEntity=ShoppingCart::class, inversedBy="user", cascade={"persist", "remove"})
+     * @ORM\JoinColumn(nullable=false)
+     */
+    private $shoppingCart;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -121,5 +127,17 @@ class User implements UserInterface
     {
         // If you store any temporary, sensitive data on the user, clear it here
         // $this->plainPassword = null;
+    }
+
+    public function getShoppingCart(): ?ShoppingCart
+    {
+        return $this->shoppingCart;
+    }
+
+    public function setShoppingCart(ShoppingCart $shoppingCart): self
+    {
+        $this->shoppingCart = $shoppingCart;
+
+        return $this;
     }
 }

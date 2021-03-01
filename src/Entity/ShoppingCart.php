@@ -3,9 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\ShoppingCartRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+
 
 /**
  * @ORM\Entity(repositoryClass=ShoppingCartRepository::class)
@@ -20,50 +19,34 @@ class ShoppingCart
     private $id;
 
     /**
-     * @ORM\Column(type="integer")
+     * @ORM\OneToOne(targetEntity=User::class, mappedBy="shoppingCart", cascade={"persist", "remove"} , orphanRemoval=true)
      */
-    private $quantity;
+    private $user;
 
-    /**
-     * @ORM\Column(type="integer")
-     */
-    private $productId;
-
-
-
-
-
-    public function __construct()
-    {
-        $this->product = new ArrayCollection();
-    }
 
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getQuantity(): ?int
+    public function getUser(): ?User
     {
-        return $this->quantity;
+        return $this->user;
     }
 
-    public function setQuantity(int $quantity): self
+    public function setUser(User $user): self
     {
-        $this->quantity = $quantity;
+        // set the owning side of the relation if necessary
+        if ($user->getShoppingCart() !== $this) {
+            $user->setShoppingCart($this);
+        }
+
+        $this->user = $user;
 
         return $this;
     }
 
-    public function getProductId(): ?int
-    {
-        return $this->productId;
-    }
 
-    public function setProductId(int $productId): self
-    {
-        $this->productId = $productId;
 
-        return $this;
-    }
+
 }
