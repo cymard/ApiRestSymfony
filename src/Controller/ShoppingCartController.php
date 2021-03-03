@@ -7,7 +7,6 @@ use App\Entity\User;
 use App\Repository\UserRepository;
 use App\Repository\ProductRepository;
 use App\Repository\CartProductRepository;
-use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,15 +16,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 class ShoppingCartController extends AbstractController
 {
-    /**
-     * @Route("/shopping/cart", name="shopping_cart")
-     */
-    public function index(): Response
-    {
-        return $this->render('shopping_cart/index.html.twig', [
-            'controller_name' => 'ShoppingCartController',
-        ]);
-    }
 
     /**
      * @Route("/api/cart/product/{id}", name="add_product_cart", methods={"POST"})
@@ -76,9 +66,13 @@ class ShoppingCartController extends AbstractController
         return $response;
     }
 
+
+
+
     /**
-     * @Route("/api/cart/products", name="diplay_cart_products", methods={"POST"})
+     * @Route("/api/cart/products", name="display_cart_products", methods={"POST"})
      * Display content of a shoppingCart
+     * email
      */
     public function getShoppingCartProducts(Request $request, UserRepository $userRepo, CartProductRepository $cartProductRepository ,ProductRepository $productRepo)
     {
@@ -148,5 +142,87 @@ class ShoppingCartController extends AbstractController
         return $response;
     }
 
+
+
+
+
+     /**
+     * @Route("/api/cart/product/{id}/quantity", name="change_cart_product_quantity", methods={"PUT"})
+     * Change quantity of shoppingCart product
+     * email,quanity
+     */
+    public function changeProductQuantity ($id, Request $request, UserRepository $userRepo, CartProductRepository $cartProductRepository ,EntityManagerInterface $em)
+    {
+        $dataJson = $request->getContent();
+
+        // recuperer le nom du user
+        $dataStdClass = json_decode($dataJson);
+        $dataArray = (array) $dataStdClass;
+        $userEmail = $dataArray["email"];
+        $newQuantity = $dataArray["quantity"];
+
+        // trouver le comtpe du user correspondant
+        $userArray = $userRepo->findBy(["email" => $userEmail]);
+        $user = $userArray[0];
+
+        // avec le user trouver le shoppingCart correspondant
+        $shoppingCart = $user->getShoppingCart();
+        $shoppingCartId = $shoppingCart->getId();
+
+        // trouver le produit du cartProduct avec $id
+        $productArray = $cartProductRepository->findBy(["shoppingCartId" => $shoppingCartId, "productId" => $id]);
+        $product = $productArray[0];
+
+        // changer la quantité du produit
+        $product->setQuantity($newQuantity);
+
+        // envoyer le nouveau data
+        $em->persist($product);
+        $em->flush();
+
+        // retourner la réponse
+        $response = $this->json(["message" => "quantity changed"], 200);
+        return $response;
+    }
+
+
+
+    
+
+     /**
+     * @Route("/api/cart/product/{id}/delete", name="delete_cart_product_quantity", methods={"DELETE"})
+     * Delete a product in CartProduct
+     * email
+     */
+    public function deleteProduct ($id, Request $request, UserRepository $userRepo, CartProductRepository $cartProductRepository ,EntityManagerInterface $em)
+    {
+
+        $dataJson = $request->getContent();
+
+        // recuperer le nom du user
+        $dataStdClass = json_decode($dataJson);
+        $dataArray = (array) $dataStdClass;
+        $userEmail = $dataArray["email"];
+
+        // trouver le comtpe du user correspondant
+        $userArray = $userRepo->findBy(["email" => $userEmail]);
+        $user = $userArray[0];
+
+        // avec le user trouver le shoppingCart correspondant
+        $shoppingCart = $user->getShoppingCart();
+        $shoppingCartId = $shoppingCart->getId();
+
+        // trouver le produit du cartProduct avec $id
+        $productArray = $cartProductRepository->findBy(["shoppingCartId" => $shoppingCartId, "productId" => $id]);
+        $product = $productArray[0];
+
+        // supprimer le produit du panier
+        $em->remove($product);
+        $em->flush();
+
+        // retourner la réponse
+        $response = $this->json(["message" => "product delete from shopping cart"], 200);
+        return $response;
+    }
 
 }
