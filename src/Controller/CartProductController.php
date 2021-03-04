@@ -14,15 +14,19 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
-class ShoppingCartController extends AbstractController
+class CartProductController extends AbstractController
 {
+
+
 
     /**
      * @Route("/api/cart/product/{id}", name="add_product_cart", methods={"POST"})
      * add a product to cartProduct
+     * quantity
      */
-    public function addProductToCart($id,Request $request, UserRepository $userRepository, EntityManagerInterface $em, SerializerInterface $serializerInterface)
+    public function addProductToCart($id,Request $request,ProductRepository $productRepo, EntityManagerInterface $em, SerializerInterface $serializerInterface)
     {
+        // récuperer le user grace au token
         $dataJson = $request->getContent();
 
         // je recois l'id du user au lieu de l'id du shoppingCart
@@ -31,25 +35,18 @@ class ShoppingCartController extends AbstractController
         // conversion sous forme de tableau pour avoir accès aux données
         $dataArray = (array) $dataStdClass; 
 
-        // trouver le user correspondant
-        $email = $dataArray["email"];
-        $emailOfUser = $userRepository->findBy(["email" => $email]);
-        $user = $emailOfUser[0];
-
-        // trouver le shoppingCart correspondant
-        $shoppingCart = $user->getShoppingCart();
-        $shoppingCartId = $shoppingCart->getId();
-      
+        $user = $this->getUser();
 
         // envoyer le produit dans le cartProduct
-  
         $cartProduct = new CartProduct();
-        //  $productId
-        $cartProduct->setProductId($id);
+        $cartProduct->setUser($user);
+
+        //  $product
+        $productArray = $productRepo->findBy(["id" => $id]);
+        $product = $productArray[0];
+        $cartProduct->setProduct($product); // surement l'entité product au complet
         //  $quantity
         $cartProduct->setQuantity($dataArray["quantity"]);
-        //  $shoppingCartId
-        $cartProduct->setShoppingCartId($shoppingCartId);
 
         $em->persist($cartProduct);
         $em->flush();
@@ -70,40 +67,28 @@ class ShoppingCartController extends AbstractController
 
 
     /**
-     * @Route("/api/cart/products", name="display_cart_products", methods={"POST"})
+     * @Route("/api/cart/products", name="display_cart_products", methods={"GET"})
      * Display content of a shoppingCart
-     * email
      */
-    public function getShoppingCartProducts(Request $request, UserRepository $userRepo, CartProductRepository $cartProductRepository ,ProductRepository $productRepo)
+    public function getShoppingCartProducts(ProductRepository $productRepo)
     {
-        $dataJson = $request->getContent();
-
-        // recuperer le nom du user
-        $dataStdClass = json_decode($dataJson);
-        $dataArray = (array) $dataStdClass;
-        $userEmail = $dataArray["email"];
-
-        // trouver le comtpe du user correspondant
-        $userArray = $userRepo->findBy(["email" => $userEmail]);
-        $user = $userArray[0];
-
-        // avec le user trouver le shoppingCart correspondant
-        $shoppingCart = $user->getShoppingCart();
-        $shoppingCartId = $shoppingCart->getId();
+        $user = $this->getUser();
 
         // trouver tous les products avec id du shoppingCart dans CartProduct
-        $allProductsArray = $cartProductRepository->findBy(["shoppingCartId" => $shoppingCartId]);
+        $allProductsCollection = $user->getCartProduct();
+        $allProductsArray = $allProductsCollection->toArray();
 
         // les afficher 
-
         $totalPrice = 0;
         $allProducts = [];
         $totalArticles = 0;
 
         foreach($allProductsArray as $product){
 
-            $productInformations = $productRepo->findBy(["id" => $product->getProductId()]);
-            
+            $productInformationsId = $product->getProduct();
+            $productInformationsArray = $productRepo->findBy(["id" => $productInformationsId]);
+            $productInformations = $productInformationsArray[0];
+
 
             // App\Entity\Product {#1037
             //     -id: 54
@@ -117,12 +102,12 @@ class ShoppingCartController extends AbstractController
             //   }
 
             $productData = [
-                "id" => $productInformations[0]->getId(),
-                "title" => $productInformations[0]->getName(), 
-                "price" => $productInformations[0]->getPrice(),
-                "image" => $productInformations[0]->getImage(),
+                "id" => $productInformations->getId(),
+                "title" => $productInformations->getName(), 
+                "price" => $productInformations->getPrice(),
+                "image" => $productInformations->getImage(),
                 "quantity" => $product->getQuantity(), 
-                "totalPrice" => $product->getQuantity() * $productInformations[0]->getPrice()
+                "totalPrice" => $product->getQuantity() * $productInformations->getPrice()
             ];
 
             array_push($allProducts, $productData);
@@ -149,35 +134,31 @@ class ShoppingCartController extends AbstractController
      /**
      * @Route("/api/cart/product/{id}/quantity", name="change_cart_product_quantity", methods={"PUT"})
      * Change quantity of shoppingCart product
-     * email,quanity
+     * quanity
      */
-    public function changeProductQuantity ($id, Request $request, UserRepository $userRepo, CartProductRepository $cartProductRepository ,EntityManagerInterface $em)
+    public function changeProductQuantity ($id, Request $request,ProductRepository $productRepo, CartProductRepository $cartProductRepository ,EntityManagerInterface $em)
     {
         $dataJson = $request->getContent();
 
         // recuperer le nom du user
         $dataStdClass = json_decode($dataJson);
         $dataArray = (array) $dataStdClass;
-        $userEmail = $dataArray["email"];
         $newQuantity = $dataArray["quantity"];
+        $user = $this->getUser();
 
-        // trouver le comtpe du user correspondant
-        $userArray = $userRepo->findBy(["email" => $userEmail]);
-        $user = $userArray[0];
-
-        // avec le user trouver le shoppingCart correspondant
-        $shoppingCart = $user->getShoppingCart();
-        $shoppingCartId = $shoppingCart->getId();
-
-        // trouver le produit du cartProduct avec $id
-        $productArray = $cartProductRepository->findBy(["shoppingCartId" => $shoppingCartId, "productId" => $id]);
+        // trouver le product correspondant à l'id
+        $productArray = $productRepo->findBy(["id" => $id]);
         $product = $productArray[0];
 
-        // changer la quantité du produit
-        $product->setQuantity($newQuantity);
+        // trouver le cartProduct avec le compte user et le produit
+        $cartProductArray = $cartProductRepository->findBy(["user" => $user, "product" => $product]);
+        $cartProduct = $cartProductArray[0];
 
+        // changement de la quantité 
+        $cartProduct->setQuantity($newQuantity);
+        
         // envoyer le nouveau data
-        $em->persist($product);
+        $em->persist($cartProduct);
         $em->flush();
 
         // retourner la réponse
@@ -189,35 +170,29 @@ class ShoppingCartController extends AbstractController
 
     
 
-     /**
+    /**
      * @Route("/api/cart/product/{id}/delete", name="delete_cart_product_quantity", methods={"DELETE"})
      * Delete a product in CartProduct
      * email
      */
-    public function deleteProduct ($id, Request $request, UserRepository $userRepo, CartProductRepository $cartProductRepository ,EntityManagerInterface $em)
+    public function deleteProduct ($id,ProductRepository $productRepo, CartProductRepository $cartProductRepository ,EntityManagerInterface $em)
     {
 
-        $dataJson = $request->getContent();
+        $user = $this->getUser();
 
-        // recuperer le nom du user
-        $dataStdClass = json_decode($dataJson);
-        $dataArray = (array) $dataStdClass;
-        $userEmail = $dataArray["email"];
-
-        // trouver le comtpe du user correspondant
-        $userArray = $userRepo->findBy(["email" => $userEmail]);
-        $user = $userArray[0];
-
-        // avec le user trouver le shoppingCart correspondant
-        $shoppingCart = $user->getShoppingCart();
-        $shoppingCartId = $shoppingCart->getId();
-
-        // trouver le produit du cartProduct avec $id
-        $productArray = $cartProductRepository->findBy(["shoppingCartId" => $shoppingCartId, "productId" => $id]);
+        // trouver le product correspondant à l'id
+        $productArray = $productRepo->findBy(["id" => $id]);
         $product = $productArray[0];
 
+        // trouver le cartProduct avec le compte user et le produit
+        $cartProductArray = $cartProductRepository->findBy(["user" => $user, "product" => $product]);
+        $cartProduct = $cartProductArray[0];
+
+        // supprimer le cartProduct depuis le User
+        $user->removeCartProduct($cartProduct);
+
         // supprimer le produit du panier
-        $em->remove($product);
+        $em->remove($cartProduct);
         $em->flush();
 
         // retourner la réponse

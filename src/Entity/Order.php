@@ -59,7 +59,7 @@ class Order
     private $cardNumber;
 
     /**
-     * @ORM\Column(type="string")
+     * @ORM\Column(type="date")
      */
     private $cardExpirationDate;
 
@@ -73,6 +73,11 @@ class Order
      * @ORM\Column(type="float")
      */
     private $amount;
+
+    // /**
+    //  * @ORM\Column(type="date")
+    //  */
+    // private $testest;
 
     public function getId(): ?int
     {
@@ -175,12 +180,12 @@ class Order
         return $this;
     }
 
-    public function getCardExpirationDate(): ?string
+    public function getCardExpirationDate(): ?\DateTimeInterface
     {
         return $this->cardExpirationDate;
     }
 
-    public function setCardExpirationDate(string $cardExpirationDate): self
+    public function setCardExpirationDate(\DateTimeInterface $cardExpirationDate): self
     {
         $this->cardExpirationDate = $cardExpirationDate;
 
@@ -210,4 +215,16 @@ class Order
 
         return $this;
     }
+
+    // public function getTestest(): ?\DateTimeInterface
+    // {
+    //     return $this->testest;
+    // }
+
+    // public function setTestest(\DateTimeInterface $testest): self
+    // {
+    //     $this->testest = $testest;
+
+    //     return $this;
+    // }
 }

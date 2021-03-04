@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
+use App\Entity\Product;
 
 /**
  * @ORM\Entity(repositoryClass=CartProductRepository::class)
@@ -25,49 +26,27 @@ class CartProduct
      * @ORM\Column(type="integer")
      * @Groups({"cartProductWithoutRelation"})
      */
-    private $productId;
-
-    /**
-     * @ORM\Column(type="integer")
-     * @Groups({"cartProductWithoutRelation"})
-     */
     private $quantity;
 
     /**
-     * @ORM\Column(type="integer")
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="CartProduct")
+     * @ORM\JoinColumn(nullable=false)
      */
-    private $shoppingCartId;
+    private $user;
+
+    /**
+     * @ORM\ManyToOne(targetEntity=Product::class, inversedBy="cartProducts")
+     * @ORM\JoinColumn(nullable=false)
+     */
+    private $product;
 
 
-
-    public function getShoppingCartId(): ?int
-    {
-        return $this->shoppingCartId;
-    }
-
-    public function setShoppingCartId(int $shoppingCartId): self
-    {
-        $this->shoppingCartId = $shoppingCartId;
-
-        return $this;
-    }
 
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getProductId(): ?int
-    {
-        return $this->productId;
-    }
-
-    public function setProductId(int $productId): self
-    {
-        $this->productId = $productId;
-
-        return $this;
-    }
 
     public function getQuantity(): ?int
     {
@@ -81,6 +60,40 @@ class CartProduct
         return $this;
     }
 
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(?User $user): self
+    {
+        $this->user = $user;
+
+        return $this;
+    }
+
+    public function getProduct(): ?Product
+    {
+        return $this->product;
+    }
+
+    public function setProduct(?Product $product): self
+    {
+        $this->product = $product;
+
+        return $this;
+    }
+
+
+
+
+
+   
+   
+
+
+    
+   
 
 
 }

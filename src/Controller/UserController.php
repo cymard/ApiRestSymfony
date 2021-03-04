@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\CartProduct;
 use App\Entity\User;
 use App\Entity\ShoppingCart;
 use App\Repository\UserRepository;
@@ -19,6 +20,7 @@ use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
 class UserController extends AbstractController
 {
     private $em;
+
     public function __construct(EntityManagerInterface $em)
     {
         $this->em = $em;
@@ -46,28 +48,24 @@ class UserController extends AbstractController
         }
     }
 
-    // // public function Create($userId)
+    /**
+     * @Route("/api/connectedAccount", name="user_information", methods={"GET"})
+     * Display all informations of a user
+     */
+    public function getUserInformation(UserRepository $userRepository, SerializerInterface $serializerInterface)
+    {
+        $user = $this->getUser();
+        $userJson = $serializerInterface->serialize($user, "json", ["groups" => "UserInformation"]);
 
-    // public function CreateShoppingCartForUser($userId)
-    // {
-    //     // création du panier
-    //     $newCart = new ShoppingCart();
-    //     $newCart->setUserId($userId);
-
-    //     // création du panier en bdd
-    //     $this->em->persist($newCart);
-    //     $this->em->flush();
-
-    //     // création du contenu du panier
-    //     $newCartProduct = new CartProduct();
-    //     $newCartProduct->setShoppingCartId($newCart->getId());
-
-    //     // création du contenu du panier en bdd
-    //     $this->em->persist($newCartProduct);
-    //     $this->em->flush();
-
-    // }
-
+        if(!empty($userJson)){
+            //requête qui envoie les données vers app react
+            $response = new Response();
+            $response->setContent($userJson);
+            $response->headers->set('Content-Type', 'application/json');
+            
+            return $response;
+        }
+    }
 
     /**
      * @Route("/register", name="register", methods={"POST"})
@@ -97,10 +95,6 @@ class UserController extends AbstractController
             $passwordHashed = $encoder->encodePassword($user, $password);
             // $passwordHashed = password_hash($password, PASSWORD_DEFAULT);
             $data->setPassword($passwordHashed);
-            
-            // 4) création d'un user cause la création d'un panier
-            $newCart = new ShoppingCart();
-            $data->setShoppingCart($newCart);
 
             // 3) envoie des données en bdd
             $em->persist($data);
@@ -121,6 +115,8 @@ class UserController extends AbstractController
             ]);
         }
     }
+
+
 
 
 }
