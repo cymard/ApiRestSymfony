@@ -117,6 +117,39 @@ class UserController extends AbstractController
     }
 
 
+    /**
+     * @Route("/api/user/paymentInformations", name="send_user_payment_informations", methods={"PUT"})
+     * send User Payment Informations
+     */
+    public function sendUserPaymentInformations(Request $request, SerializerInterface $serializerInterface, EntityManagerInterface $em ,ValidatorInterface $validator,UserPasswordEncoderInterface $encoder)
+    {
+        // récuperer les infos 
+        $dataJson = $request->getContent();
+        $data = json_decode($dataJson);
+
+        // récuperer le user
+        $user = $this->getUser();
+
+        // envoie des informations
+        $user->setFirstName($data->firstName);
+        $user->setLastName($data->lastName); 
+        $user->setCity($data->city); 
+        $user->setAddress($data->address); 
+        $user->setPaymentMethod($data->paymentMethod); 
+        $user->setCardName($data->cardName); 
+        $user->setCardNumber($data->cardNumber); 
+        $user->setCardExpirationDate($data->cardExpirationDate); 
+        $user->setCryptogram($data->cryptogram); 
+
+        // envoie bdd
+        $em->persist($user);
+        $em->flush();
+        
+        return $this->json([
+            'informations' => $data
+        ],200);
+    }
+
 
 
 }

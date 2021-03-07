@@ -3,6 +3,8 @@
 namespace App\Controller;
 
 use App\Entity\order;
+use App\Entity\CartProduct;
+use App\Entity\OrderProduct;
 use App\Repository\OrderRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -13,6 +15,13 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 class OrderController extends AbstractController
 {
+
+    private $em;
+
+    public function __construct(EntityManagerInterface $em)
+    {
+        $this->em = $em;
+    }
 
     /**
      * @Route("/admin/orders", name="order", methods={"GET"})
@@ -37,7 +46,7 @@ class OrderController extends AbstractController
     }
 
     /**
-     * @Route("/admin/order", name="order", methods={"POST"})
+     * @Route("/api/order", name="order", methods={"POST"})
      * Create an order
      */
     public function createOrder(Request $request,SerializerInterface $serializerInterface,EntityManagerInterface $em, OrderRepository $repo)
@@ -47,6 +56,9 @@ class OrderController extends AbstractController
 
         // deserialiser les données
         $data = $serializerInterface->deserialize($dataJson, Order::class, "json");
+        $user = $this->getUser();
+        $data->setUser($user);
+        $this->transferCartProductToOrderProduct($data, $user);
 
         // envoie dans la bdd
         $em->persist($data);
@@ -62,7 +74,49 @@ class OrderController extends AbstractController
             
             return $response;
         }
-
-
     }
+
+
+
+
+
+     /**
+     * Transfer cart_product to order_product
+     */
+    public function transferCartProductToOrderProduct($order, $user){
+
+        // récup tous les cart_product correspondant au user
+        $cartProductsCollection = $user->getCartProduct();
+        $cartProductsArray = $cartProductsCollection->toArray();
+
+        foreach( $cartProductsArray as $cartProduct){
+
+            // récupère les infos du cartProduct qui nous interesse
+            $product = $cartProduct->getProduct(); // le product n'a pas toutes les infos
+            $quantity = $cartProduct->getQuantity();
+
+            // instanciation d'un nouvel order
+            $orderProduct = new OrderProduct();
+            $orderProduct->setQuantity($quantity);
+            $orderProduct->setProduct($product);
+
+            // associer à un order deja existant
+            $orderProduct->setUserOrder($order);
+
+            // envoie des données en bdd
+            $this->em->persist($orderProduct);
+            $this->em->flush();
+
+            // supprimer tous les cart_products correspondant
+            $user->removeCartProduct($cartProduct);
+
+            // envoie des données en bdd
+            $this->em->remove($cartProduct);
+            $this->em->flush();
+        }
+   
+    }   
+
+
+
 }

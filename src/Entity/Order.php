@@ -2,8 +2,11 @@
 
 namespace App\Entity;
 
-use App\Repository\OrderRepository;
+use DateTime;
 use Doctrine\ORM\Mapping as ORM;
+use App\Repository\OrderRepository;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\Common\Collections\ArrayCollection;
 
 /**
  * @ORM\Entity(repositoryClass=OrderRepository::class)
@@ -73,6 +76,30 @@ class Order
      * @ORM\Column(type="float")
      */
     private $amount;
+
+    /**
+     * @ORM\OneToMany(targetEntity=OrderProduct::class, mappedBy="userOrder")
+     */
+    private $orderProducts;
+
+    /**
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="orders")
+     * @ORM\JoinColumn(nullable=true)
+     */
+    private $user;
+
+    /**
+     * @ORM\Column(type="datetime")
+     */
+    private $createdDate;
+
+    public function __construct()
+    {
+        $this->createdDate = new DateTime();
+        // DateTime::createFromFormat('j-M-Y', date("D M d, Y G:i"));
+        $this->orderProducts = new ArrayCollection();
+    }
+
 
     // /**
     //  * @ORM\Column(type="date")
@@ -227,4 +254,60 @@ class Order
 
     //     return $this;
     // }
+
+    /**
+     * @return Collection|OrderProduct[]
+     */
+    public function getOrderProducts(): Collection
+    {
+        return $this->orderProducts;
+    }
+
+    public function addOrderProduct(OrderProduct $orderProduct): self
+    {
+        if (!$this->orderProducts->contains($orderProduct)) {
+            $this->orderProducts[] = $orderProduct;
+            $orderProduct->setUserOrder($this);
+        }
+
+        return $this;
+    }
+
+    public function removeOrderProduct(OrderProduct $orderProduct): self
+    {
+        if ($this->orderProducts->removeElement($orderProduct)) {
+            // set the owning side to null (unless already changed)
+            if ($orderProduct->getUserOrder() === $this) {
+                $orderProduct->setUserOrder(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(?User $user): self
+    {
+        $this->user = $user;
+
+        return $this;
+    }
+
+    public function getCreatedDate(): ?\DateTimeInterface
+    {
+        return $this->createdDate;
+    }
+
+    public function setCreatedDate(\DateTimeInterface $createdDate): self
+    {
+        $this->createdDate = $createdDate;
+
+        return $this;
+    }
+
+   
 }

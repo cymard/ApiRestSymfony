@@ -10,6 +10,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Serializer\Annotation\Groups;
+use DateTime;
+use Date;
 
 /**
  * @ORM\Entity(repositoryClass=UserRepository::class)
@@ -51,7 +53,7 @@ class User implements UserInterface
     private $password;
 
     /**
-     * @ORM\OneToMany(targetEntity=CartProduct::class, mappedBy="user")
+     * @ORM\OneToMany(targetEntity=CartProduct::class, mappedBy="user",cascade={"persist", "remove"})
      */
     private $CartProduct;
 
@@ -98,7 +100,7 @@ class User implements UserInterface
     private $cardNumber;
 
     /**
-     * @ORM\Column(type="date", nullable=true)
+     * @ORM\Column(type="string", nullable=true)
      * @Groups({"UserInformation"})
      */
     private $cardExpirationDate;
@@ -109,12 +111,18 @@ class User implements UserInterface
      */
     private $cryptogram;
 
+    /**
+     * @ORM\OneToMany(targetEntity=Order::class, mappedBy="user")
+     */
+    private $orders;
+
 
     
 
     public function __construct()
     {
         $this->CartProduct = new ArrayCollection();
+        $this->orders = new ArrayCollection();
     }
 
 
@@ -310,13 +318,17 @@ class User implements UserInterface
         return $this;
     }
 
-    public function getCardExpirationDate(): ?\DateTimeInterface
+    public function getCardExpirationDate(): ?string
     {
         return $this->cardExpirationDate;
     }
 
-    public function setCardExpirationDate(?\DateTimeInterface $cardExpirationDate): self
+    public function setCardExpirationDate($cardExpirationDate): self
     {
+
+        // $dateIso =  new Date($cardExpirationDate);
+        // $date = $dateIso->format('d/y');
+
         $this->cardExpirationDate = $cardExpirationDate;
 
         return $this;
@@ -330,6 +342,36 @@ class User implements UserInterface
     public function setCryptogram(?int $cryptogram): self
     {
         $this->cryptogram = $cryptogram;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection|Order[]
+     */
+    public function getOrders(): Collection
+    {
+        return $this->orders;
+    }
+
+    public function addOrder(Order $order): self
+    {
+        if (!$this->orders->contains($order)) {
+            $this->orders[] = $order;
+            $order->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeOrder(Order $order): self
+    {
+        if ($this->orders->removeElement($order)) {
+            // set the owning side to null (unless already changed)
+            if ($order->getUser() === $this) {
+                $order->setUser(null);
+            }
+        }
 
         return $this;
     }
