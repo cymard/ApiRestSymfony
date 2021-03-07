@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 class OrderController extends AbstractController
@@ -24,15 +25,14 @@ class OrderController extends AbstractController
     }
 
     /**
-     * @Route("/admin/orders", name="order", methods={"GET"})
+     * @Route("/admin/orders", name="all_orders", methods={"GET"})
      * Display orders
      */
     public function displayOrders(OrderRepository $repo, SerializerInterface $serializerInterface)
     {
         $dataArray = $repo->findAll();
-        $dataJson = $serializerInterface->serialize($dataArray, "json");
+        $dataJson = $serializerInterface->serialize($dataArray, "json", ["groups" => "order"]);
 
-        // 2) récuperer tous les comptes
         // 3) les afficher
         if(!empty($dataJson)){
             //requête qui envoie les données vers app react
@@ -46,7 +46,7 @@ class OrderController extends AbstractController
     }
 
     /**
-     * @Route("/api/order", name="order", methods={"POST"})
+     * @Route("/api/order", name="create_an_order", methods={"POST"})
      * Create an order
      */
     public function createOrder(Request $request,SerializerInterface $serializerInterface,EntityManagerInterface $em, OrderRepository $repo)
@@ -75,8 +75,6 @@ class OrderController extends AbstractController
             return $response;
         }
     }
-
-
 
 
 
@@ -117,6 +115,46 @@ class OrderController extends AbstractController
    
     }   
 
+
+    /**
+     * @Route("/admin/order/{orderId}/cart", name="display_order_products", methods={"GET"})
+     * display order products
+     */
+    public function displayOrderProducts($orderId, OrderRepository $orderRepo,NormalizerInterface $normalizerInterface, Request $request,SerializerInterface $serializerInterface,EntityManagerInterface $em, OrderRepository $repo)
+    {
+        // récuperer la commande correspondante
+        $orderArray = $orderRepo->findBy(["id" => $orderId]);
+        $order = $orderArray[0];
+
+        // récuperer les produits de la commande
+        $orderProductsCollection = $order->getOrderProducts();
+        $orderProducts = $orderProductsCollection->toArray();
+
+        $allProducts = [];
+        
+       
+        foreach($orderProducts as $orderProduct){
+            $quantity = $orderProduct->getQuantity();
+
+            $product = $orderProduct->getProduct();
+
+            $productNormalized = $normalizerInterface->normalize($product, null , ["groups" => "productWithoutComments"]);
+
+            $productInformations = ["product" => $productNormalized, "quantity" => $quantity];
+            array_push($allProducts, $productInformations);
+  
+        }
+
+
+
+        // response
+        $response = new Response();
+        $response->setContent(json_encode(["data" => $allProducts]));
+        $response->headers->set('Content-Type', 'application/json');
+
+        return $response;
+
+    }
 
 
 }
