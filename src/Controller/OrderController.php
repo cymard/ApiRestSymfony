@@ -7,9 +7,11 @@ use App\Entity\CartProduct;
 use App\Entity\OrderProduct;
 use App\Repository\OrderRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Knp\Component\Pager\PaginatorInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -28,22 +30,82 @@ class OrderController extends AbstractController
      * @Route("/admin/orders", name="all_orders", methods={"GET"})
      * Display orders
      */
-    public function displayOrders(OrderRepository $repo, SerializerInterface $serializerInterface)
+    public function displayOrders(OrderRepository $repo, SerializerInterface $serializerInterface,NormalizerInterface $normalizerInterface,  PaginatorInterface $paginator, Request $request ) 
     {
-        $dataArray = $repo->findAll();
-        $dataJson = $serializerInterface->serialize($dataArray, "json", ["groups" => "order"]);
+        if($request->query->get('page') && $request->query->get('search')){
 
-        // 3) les afficher
-        if(!empty($dataJson)){
-            //requête qui envoie les données vers app react
-            $response = new Response();
-            $response->setContent($dataJson);
-            $response->headers->set('Content-Type', 'application/json');
+
+
+            $page = (int)$request->query->get('page');
+            $search = $request->query->get('search');
+
+            $ordersPerPage = 9;
+
+            if(empty($search)){
+                
+            }
+            $query = $this->em->createQuery(
+                'SELECT o
+                FROM App\Entity\Order o
+                ORDER BY o.createdDate DESC'
+            );
+
+            $allOrders = count($query->getResult());
+            $pageNumber = ceil ($allOrders/$ordersPerPage);
+
+            $orders = $paginator->paginate(
+                $query, // Requête contenant les données à paginer (ici nos articles)
+                $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
+                $ordersPerPage // Nombre de résultats par page
+    
+            );
+
             
+            // convertion des objets en tableaux
+            $ordersArray = $normalizerInterface->normalize($orders,null,["groups" => "order"]);
+           
+            // 3) les afficher
+            // responses
+            $response = new JsonResponse();
+            $response->headers->set('Content-Type', 'application/json');
+
+            // convertion des tableaux en json
+            $allResponses = json_encode(["ordersPerPage" => $ordersPerPage ,"allOrdersNumber" => $allOrders, "totalPageNumber"=>$pageNumber, "pageContent"=>$ordersArray]);
+
+            $response->setContent($allResponses);
+
+            return $response;
+    
+        }else{
+            $response = new JsonResponse(['message' => "pas de query param 'page' ou 'search'."]);
             return $response;
         }
         
+
+       
+        
     }
+
+    // /**
+    //  * @Route("/admin/orders", name="all_orders", methods={"GET"})
+    //  * Display orders
+    //  */
+    // public function displayOrders(OrderRepository $repo, SerializerInterface $serializerInterface)
+    // {
+    //     $dataArray = $repo->findAll();
+    //     $dataJson = $serializerInterface->serialize($dataArray, "json", ["groups" => "order"]);
+
+    //     // 3) les afficher
+    //     if(!empty($dataJson)){
+    //         //requête qui envoie les données vers app react
+    //         $response = new Response();
+    //         $response->setContent($dataJson);
+    //         $response->headers->set('Content-Type', 'application/json');
+            
+    //         return $response;
+    //     }
+        
+    // }
 
     /**
      * @Route("/api/order", name="create_an_order", methods={"POST"})
