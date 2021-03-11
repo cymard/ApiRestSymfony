@@ -41,20 +41,18 @@ class OrderController extends AbstractController
 
             $ordersPerPage = 9;
 
-            if(empty($search)){
-                
-            }
-            $query = $this->em->createQuery(
-                'SELECT o
-                FROM App\Entity\Order o
-                ORDER BY o.createdDate DESC'
-            );
+            if($search === "default"){
+               $queryBuilder =  $repo->findAllOrders();
 
-            $allOrders = count($query->getResult());
+            }else{
+                $queryBuilder = $repo->findOrderBySearchingEmail($search);
+            }
+
+            $allOrders = count($queryBuilder->getQuery()->getResult());
             $pageNumber = ceil ($allOrders/$ordersPerPage);
 
             $orders = $paginator->paginate(
-                $query, // Requête contenant les données à paginer (ici nos articles)
+                $queryBuilder->getQuery(), // Requête contenant les données à paginer (ici nos articles)
                 $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
                 $ordersPerPage // Nombre de résultats par page
     
