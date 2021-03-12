@@ -84,26 +84,6 @@ class OrderController extends AbstractController
         
     }
 
-    // /**
-    //  * @Route("/admin/orders", name="all_orders", methods={"GET"})
-    //  * Display orders
-    //  */
-    // public function displayOrders(OrderRepository $repo, SerializerInterface $serializerInterface)
-    // {
-    //     $dataArray = $repo->findAll();
-    //     $dataJson = $serializerInterface->serialize($dataArray, "json", ["groups" => "order"]);
-
-    //     // 3) les afficher
-    //     if(!empty($dataJson)){
-    //         //requête qui envoie les données vers app react
-    //         $response = new Response();
-    //         $response->setContent($dataJson);
-    //         $response->headers->set('Content-Type', 'application/json');
-            
-    //         return $response;
-    //     }
-        
-    // }
 
     /**
      * @Route("/api/order", name="create_an_order", methods={"POST"})
@@ -210,6 +190,29 @@ class OrderController extends AbstractController
         // response
         $response = new Response();
         $response->setContent(json_encode(["data" => $allProducts]));
+        $response->headers->set('Content-Type', 'application/json');
+
+        return $response;
+
+    }
+
+    /**
+     * @Route("/admin/order/{orderId}", name="display_an_order", methods={"GET"})
+     * display an order
+     */
+    public function displayAnOrder ($orderId,OrderRepository $repoOrder, NormalizerInterface $normalizerInterface)
+    {
+        $order = $repoOrder->findBy(["id" => $orderId]);
+        $orderArray = (array) $order;
+        $order = $orderArray[0];
+
+        // transformation de l'objet en tableau
+        $orderArray = $normalizerInterface->normalize($order, "json",["groups" => "order"]);
+
+        // response
+
+        $response = new Response();
+        $response->setContent(json_encode(["orderInformations" => $orderArray]));
         $response->headers->set('Content-Type', 'application/json');
 
         return $response;

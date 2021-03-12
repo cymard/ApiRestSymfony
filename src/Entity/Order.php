@@ -209,9 +209,12 @@ class Order
         return $this;
     }
 
-    public function getCardNumber(): ?int
+    public function getCardNumber()
     {
-        return $this->cardNumber;
+        // return $this->cardNumber;
+        $cardNumberString = substr($this->cardNumber, -3);
+        $protectedCardNumber = "***".strval($cardNumberString);
+        return $protectedCardNumber;
     }
 
     public function setCardNumber(int $cardNumber): self
@@ -221,9 +224,13 @@ class Order
         return $this;
     }
 
-    public function getCardExpirationDate(): ?\DateTimeInterface
+    public function getCardExpirationDate()
     {
-        return $this->cardExpirationDate;
+        // ?\DateTimeInterface
+        // return $this->cardExpirationDate;
+        $dateTime = $this->cardExpirationDate; // objet datetime sous format iso8601
+        $theDate = $dateTime->format('m/y'); // changement de format
+        return $theDate;
     }
 
     public function setCardExpirationDate(\DateTimeInterface $cardExpirationDate): self

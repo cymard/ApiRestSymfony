@@ -305,9 +305,12 @@ class User implements UserInterface
         return $this;
     }
 
-    public function getCardNumber(): ?int
+    public function getCardNumber()
     {
-        return $this->cardNumber;
+        $cardNumberString = strval($this->cardNumber);
+        $lastNumbersOfCardNumber = substr($cardNumberString,-3);
+        $protectedCardNumber = "***".$lastNumbersOfCardNumber;
+        return $protectedCardNumber;
     }
 
     public function setCardNumber(?int $cardNumber): self
@@ -333,9 +336,9 @@ class User implements UserInterface
         return $this;
     }
 
-    public function getCryptogram(): ?int
+    public function getCryptogram()
     {
-        return $this->cryptogram;
+        return "***";
     }
 
     public function setCryptogram(?int $cryptogram): self
