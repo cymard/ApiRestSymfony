@@ -31,6 +31,28 @@ class OrderRepository extends ServiceEntityRepository
     /**
     * Returns an array of searched Orders
     */
+    public function findAllOrdersOfEmail($email)
+    {
+        return $this->createQueryBuilder('o')
+            ->andWhere('o.email = :email')
+            ->setParameter("email",$email)
+            ->orderBy('o.createdDate' , 'DESC');
+    }
+
+    /**
+    * Returns an array of searched Orders
+    */
+    public function findOrderByAscDate($email)
+    {
+        return $this->createQueryBuilder('o')
+            ->andWhere('o.email = :email')
+            ->setParameter("email",$email)
+            ->orderBy('o.createdDate' , 'ASC');
+    }
+
+    /**
+    * Returns an array of searched Orders
+    */
     public function findOrderBySearchingEmail($search)
     {
         return $this->createQueryBuilder('o')

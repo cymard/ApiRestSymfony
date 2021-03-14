@@ -33,9 +33,6 @@ class OrderController extends AbstractController
     public function displayOrders(OrderRepository $repo, SerializerInterface $serializerInterface,NormalizerInterface $normalizerInterface,  PaginatorInterface $paginator, Request $request ) 
     {
         if($request->query->get('page') && $request->query->get('search')){
-
-
-
             $page = (int)$request->query->get('page');
             $search = $request->query->get('search');
 
@@ -78,10 +75,6 @@ class OrderController extends AbstractController
             $response = new JsonResponse(['message' => "pas de query param 'page' ou 'search'."]);
             return $response;
         }
-        
-
-       
-        
     }
 
 
@@ -158,7 +151,7 @@ class OrderController extends AbstractController
 
     /**
      * @Route("/admin/order/{orderId}/cart", name="display_order_products", methods={"GET"})
-     * display order products
+     * display order products for admin
      */
     public function displayOrderProducts($orderId, OrderRepository $orderRepo,NormalizerInterface $normalizerInterface, Request $request,SerializerInterface $serializerInterface,EntityManagerInterface $em, OrderRepository $repo)
     {
@@ -196,11 +189,52 @@ class OrderController extends AbstractController
 
     }
 
+
     /**
-     * @Route("/admin/order/{orderId}", name="display_an_order", methods={"GET"})
-     * display an order
+     * @Route("/api/order/{orderId}/cart", name="user_display_order_products", methods={"GET"})
+     * display order products
      */
-    public function displayAnOrder ($orderId,OrderRepository $repoOrder, NormalizerInterface $normalizerInterface)
+    public function userDisplayOrderProducts($orderId, OrderRepository $orderRepo,NormalizerInterface $normalizerInterface, Request $request,SerializerInterface $serializerInterface,EntityManagerInterface $em, OrderRepository $repo)
+    {
+        // récuperer la commande correspondante
+        $orderArray = $orderRepo->findBy(["id" => $orderId]);
+        $order = $orderArray[0];
+
+        // récuperer les produits de la commande
+        $orderProductsCollection = $order->getOrderProducts();
+        $orderProducts = $orderProductsCollection->toArray();
+
+        $allProducts = [];
+        
+       
+        foreach($orderProducts as $orderProduct){
+            $quantity = $orderProduct->getQuantity();
+
+            $product = $orderProduct->getProduct();
+
+            $productNormalized = $normalizerInterface->normalize($product, null , ["groups" => "productWithoutComments"]);
+
+            $productInformations = ["product" => $productNormalized, "quantity" => $quantity];
+            array_push($allProducts, $productInformations);
+  
+        }
+
+
+
+        // response
+        $response = new Response();
+        $response->setContent(json_encode(["data" => $allProducts]));
+        $response->headers->set('Content-Type', 'application/json');
+
+        return $response;
+
+    }
+
+    /**
+     * @Route("/admin/order/{orderId}", name="admin_display_an_order", methods={"GET"})
+     * display an order for admin
+     */
+    public function adminDisplayAnOrder ($orderId,OrderRepository $repoOrder, NormalizerInterface $normalizerInterface)
     {
         $order = $repoOrder->findBy(["id" => $orderId]);
         $orderArray = (array) $order;
@@ -219,5 +253,91 @@ class OrderController extends AbstractController
 
     }
 
+
+    /**
+     * @Route("/api/order/{orderId}", name="user_display_an_order", methods={"GET"})
+     * display an order
+     */
+    public function userDisplayAnOrder ($orderId,OrderRepository $repoOrder, NormalizerInterface $normalizerInterface)
+    {
+        $order = $repoOrder->findBy(["id" => $orderId]);
+        $orderArray = (array) $order;
+        $order = $orderArray[0];
+
+        // transformation de l'objet en tableau
+        $orderArray = $normalizerInterface->normalize($order, "json",["groups" => "order"]);
+
+        // response
+
+        $response = new Response();
+        $response->setContent(json_encode(["orderInformations" => $orderArray]));
+        $response->headers->set('Content-Type', 'application/json');
+
+        return $response;
+
+    }
+
+
+
+    /**
+     * @Route("/api/orders", name="display_all_user_orders", methods={"GET"})
+     * display all orders of a user
+     */
+    public function displayUserOrders( NormalizerInterface $normalizerInterface, Request $request, PaginatorInterface $paginator, OrderRepository $orderRepo)
+    {
+        if($request->query->get('page') && $request->query->get('date') ){
+
+
+            $page = $request->query->get('page');
+            $date = $request->query->get('date');
+
+            $user = $this->getUser();
+            $userEmail = $user->getEmail();
+            $ordersCollection = $user->getOrders();
+            $ordersArray = $ordersCollection->toArray();
+            $ordersPerPage = 9;
+
+            if($date === 'desc'){
+                $queryBuilder = $orderRepo->findAllOrdersOfEmail($userEmail);
+            }else if($date === 'asc'){
+                $queryBuilder = $orderRepo->findOrderByAscDate($userEmail);
+            }else{
+                $queryBuilder = $orderRepo->findAllOrdersOfEmail($userEmail);
+            }
+
+            $allOrders = count($queryBuilder->getQuery()->getResult());
+            $pageNumber = ceil($allOrders/9);
+            // pagination
+            // recup la query
+    
+            // system de pagination
+            $orders = $paginator->paginate(
+                $queryBuilder->getQuery(), // Requête contenant les données à paginer (ici nos articles)
+                $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
+                $ordersPerPage // Nombre de résultats par page
+    
+            );
+
+    
+            // convertion des objets en tableaux
+            $ordersArray = $normalizerInterface->normalize($orders,null,["groups" => "order"]);
+           
+            // 3) les afficher
+            // responses
+            $response = new JsonResponse();
+            $response->headers->set('Content-Type', 'application/json');
+
+            // convertion des tableaux en json
+            $allResponses = json_encode(["ordersPerPage" => $ordersPerPage ,"allOrdersNumber" => $allOrders, "totalPageNumber"=>$pageNumber, "pageContent"=>$ordersArray]);
+
+            $response->setContent($allResponses);
+
+            return $response;
+    
+        }else{
+            return "error";
+        }
+        
+    }
 
 }

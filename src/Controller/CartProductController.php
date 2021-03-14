@@ -2,12 +2,13 @@
 
 namespace App\Controller;
 
-use App\Entity\CartProduct;
 use App\Entity\User;
+use App\Entity\Product;
+use App\Entity\CartProduct;
 use App\Repository\UserRepository;
 use App\Repository\ProductRepository;
-use App\Repository\CartProductRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Repository\CartProductRepository;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -17,6 +18,12 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 class CartProductController extends AbstractController
 {
 
+    private $em;
+
+    public function __construct(EntityManagerInterface $em)
+    {
+        $this->em = $em;
+    }
 
 
     /**
@@ -24,7 +31,7 @@ class CartProductController extends AbstractController
      * add a product to cartProduct
      * quantity
      */
-    public function addProductToCart($id,Request $request,ProductRepository $productRepo, EntityManagerInterface $em, SerializerInterface $serializerInterface)
+    public function addProductToCart($id, CartProductRepository $cartRepo,Request $request,ProductRepository $productRepo, EntityManagerInterface $em, SerializerInterface $serializerInterface)
     {
         // récuperer le user grace au token
         $dataJson = $request->getContent();
@@ -44,14 +51,34 @@ class CartProductController extends AbstractController
         //  $product
         $productArray = $productRepo->findBy(["id" => $id]);
         $product = $productArray[0];
+
+        // vérification des stocks
+        if($product->getStock() === 0 ){
+            $response = new Response(json_encode(["message" => "impossible d'ajouter le produit au panier car le produit n'est plus en stock."]));
+            $response->headers->set('Content-type','application/json');
+            $response->setStatusCode(Response::HTTP_OK);
+            return $response;
+        }
+
+
+
         $cartProduct->setProduct($product); // surement l'entité product au complet
+
         //  $quantity
         $cartProduct->setQuantity($dataArray["quantity"]);
 
-        $em->persist($cartProduct);
-        $em->flush();
+        $existingCartProduct = $cartRepo->findBy(["user" => $cartProduct->getUser(), "product" =>$cartProduct->getProduct()]);
 
-       
+        /*regarder si la ligne existe deja*/
+        if($existingCartProduct != []){
+            // capturer l'erreur 500 due à la clé unique
+            // reprendre le meme produit
+            // augmenter la quantité avec +1 du produit
+            $this->addQuantityToCartProduct($product->getId());
+        }else{
+            $em->persist($cartProduct);
+            $em->flush();
+        }
 
         // réponse
         $cartProductJson = $serializerInterface->serialize($cartProduct, "json", ["groups" => "cartProductWithoutRelation"]);
@@ -62,6 +89,37 @@ class CartProductController extends AbstractController
         $response->setStatusCode(Response::HTTP_OK);
         return $response;
     }
+
+    public function addQuantityToCartProduct($id)
+    {
+        
+        $productRepo = $this->getDoctrine()->getRepository(Product::class);
+        
+        $cartProductRepository = $this->getDoctrine()->getRepository(CartProduct::class);
+
+        
+        $user = $this->getUser();
+
+        // trouver le product correspondant à l'id
+        $productArray = $productRepo->findBy(["id" => $id]);
+        $product = $productArray[0];
+
+        // trouver le cartProduct avec le compte user et le produit
+        $cartProductArray = $cartProductRepository->findBy(["user" => $user, "product" => $product]);
+        $cartProduct = $cartProductArray[0];
+
+        // quantité actuelle +1
+        $newQuantity = $cartProduct->getQuantity() + 1;
+
+        // changement de la quantité 
+        $cartProduct->setQuantity($newQuantity);
+
+        // envoyer le nouveau data
+        $this->em->persist($cartProduct);
+        $this->em->flush();
+
+      }
+  
 
 
 
@@ -136,8 +194,10 @@ class CartProductController extends AbstractController
      * Change quantity of shoppingCart product
      * quanity
      */
-    public function changeProductQuantity ($id, Request $request,ProductRepository $productRepo, CartProductRepository $cartProductRepository ,EntityManagerInterface $em)
+    public function changeProductQuantity ($id, Request $request, ProductRepository $productRepo, CartProductRepository $cartProductRepository)
     {
+
+
         $dataJson = $request->getContent();
 
         // recuperer le nom du user
@@ -156,10 +216,10 @@ class CartProductController extends AbstractController
 
         // changement de la quantité 
         $cartProduct->setQuantity($newQuantity);
-        
+
         // envoyer le nouveau data
-        $em->persist($cartProduct);
-        $em->flush();
+        $this->em->persist($cartProduct);
+        $this->em->flush();
 
         // retourner la réponse
         $response = $this->json(["message" => "quantity changed"], 200);
