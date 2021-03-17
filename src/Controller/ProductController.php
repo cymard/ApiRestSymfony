@@ -270,7 +270,39 @@ class ProductController extends AbstractController
 
             return $response;
         
-        }
-    }
+        }else if($request->query->get('search') && $request->query->get('page')){
+            $search = $request->query->get('search');
+            $page = $request->query->get('page');
 
+            $data = $productRepository->searchProduct($search);
+            $query = $data->getQuery();
+
+            
+            $productsPerPage = 9;
+            $allProducts = count($query->getResult());
+            $pageNumber = ceil ($allProducts/$productsPerPage);
+
+            $articles = $paginator->paginate(
+                $query, // Requête contenant les données à paginer (ici nos articles)
+                $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
+                $productsPerPage // Nombre de résultats par page
+
+            );
+
+            // convertion des objets en tableaux
+            $array = $normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
+
+            // responses
+            $response = new JsonResponse();
+            $response->headers->set('Content-Type', 'application/json');
+
+            // convertion des tableaux en json
+            $allResponses = json_encode(["productsPerPageNumber" => $productsPerPage,"search"=> $search ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "data"=>$array]);
+
+            $response->setContent($allResponses);
+
+            return $response;
+        }
+    
+    }
 }

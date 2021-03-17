@@ -151,26 +151,5 @@ class UserController extends AbstractController
     }
 
 
-     /**
-     * @Route("/api/user/order", name="user_order_number", methods={"GET"})
-     * Display User orders number
-     */
-    public function userOrderNumber(Request $request, SerializerInterface $serializerInterface, EntityManagerInterface $em ,ValidatorInterface $validator,UserPasswordEncoderInterface $encoder)
-    {
-        $user = $this->getUser();
-        $orderCollection = $user->getOrders();
-        $orderArray = $orderCollection->toArray();
-        $orderNumber = count($orderArray);
-
-
-        $response = new Response();
-        $response->headers->set('Content-Type', 'application/json');
-        $response->setContent(json_encode([
-            'orderNumber' => $orderNumber,
-        ]));
-
-        return $response;
-    }
-
 
 }

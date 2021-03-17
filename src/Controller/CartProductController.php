@@ -197,7 +197,6 @@ class CartProductController extends AbstractController
     public function changeProductQuantity ($id, Request $request, ProductRepository $productRepo, CartProductRepository $cartProductRepository)
     {
 
-
         $dataJson = $request->getContent();
 
         // recuperer le nom du user
@@ -210,20 +209,34 @@ class CartProductController extends AbstractController
         $productArray = $productRepo->findBy(["id" => $id]);
         $product = $productArray[0];
 
-        // trouver le cartProduct avec le compte user et le produit
-        $cartProductArray = $cartProductRepository->findBy(["user" => $user, "product" => $product]);
-        $cartProduct = $cartProductArray[0];
+        // comparison du stock avec la quantité demandée
+        $productStock = $product->getStock();
 
-        // changement de la quantité 
-        $cartProduct->setQuantity($newQuantity);
+        if($productStock < $newQuantity){
 
-        // envoyer le nouveau data
-        $this->em->persist($cartProduct);
-        $this->em->flush();
+            // remettre l'ancienne quantité demandée
+            $cartProductArray = $cartProductRepository->findBy(["user" => $user, "product" => $product]);
+            $cartProduct = $cartProductArray[0];
 
-        // retourner la réponse
-        $response = $this->json(["message" => "quantity changed"], 200);
-        return $response;
+            $response = $this->json(["erreur" => "La quantité demandée est supérieure au stock du produit", "number" => $cartProduct->getQuantity()], 200);
+            return $response;
+
+        }else{
+            // trouver le cartProduct avec le compte user et le produit
+            $cartProductArray = $cartProductRepository->findBy(["user" => $user, "product" => $product]);
+            $cartProduct = $cartProductArray[0];
+
+            // changement de la quantité 
+            $cartProduct->setQuantity($newQuantity);
+
+            // envoyer le nouveau data
+            $this->em->persist($cartProduct);
+            $this->em->flush();
+
+            // retourner la réponse
+            $response = $this->json(["message" => "quantity changed"], 200);
+            return $response;
+        }
     }
 
 

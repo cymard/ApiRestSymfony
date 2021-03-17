@@ -111,7 +111,7 @@ class OrderController extends AbstractController
 
 
 
-     /**
+    /**
      * Transfer cart_product to order_product
      */
     public function transferCartProductToOrderProduct($order, $user){
@@ -120,11 +120,15 @@ class OrderController extends AbstractController
         $cartProductsCollection = $user->getCartProduct();
         $cartProductsArray = $cartProductsCollection->toArray();
 
-        foreach( $cartProductsArray as $cartProduct){
+        foreach($cartProductsArray as $cartProduct){
 
             // récupère les infos du cartProduct qui nous interesse
             $product = $cartProduct->getProduct(); // le product n'a pas toutes les infos
             $quantity = $cartProduct->getQuantity();
+
+            // baisse du stock
+            $productStock = $product->getStock();
+            $product->setStock($productStock - $quantity);
 
             // instanciation d'un nouvel order
             $orderProduct = new OrderProduct();
@@ -205,7 +209,6 @@ class OrderController extends AbstractController
         $orderProducts = $orderProductsCollection->toArray();
 
         $allProducts = [];
-        
        
         foreach($orderProducts as $orderProduct){
             $quantity = $orderProduct->getQuantity();
@@ -218,8 +221,6 @@ class OrderController extends AbstractController
             array_push($allProducts, $productInformations);
   
         }
-
-
 
         // response
         $response = new Response();
@@ -338,6 +339,27 @@ class OrderController extends AbstractController
             return "error";
         }
         
+    }
+
+    /**
+     * @Route("/api/user/order", name="user_order_number", methods={"GET"})
+     * Display User orders number
+     */
+    public function userOrderNumber()
+    {
+        $user = $this->getUser();
+        $orderCollection = $user->getOrders();
+        $orderArray = $orderCollection->toArray();
+        $orderNumber = count($orderArray);
+
+
+        $response = new Response();
+        $response->headers->set('Content-Type', 'application/json');
+        $response->setContent(json_encode([
+            'orderNumber' => $orderNumber,
+        ]));
+
+        return $response;
     }
 
 }
