@@ -125,6 +125,7 @@ class OrderController extends AbstractController
             // récupère les infos du cartProduct qui nous interesse
             $product = $cartProduct->getProduct(); // le product n'a pas toutes les infos
             $quantity = $cartProduct->getQuantity();
+            $price = $product->getPrice();
 
             // baisse du stock
             $productStock = $product->getStock();
@@ -134,6 +135,7 @@ class OrderController extends AbstractController
             $orderProduct = new OrderProduct();
             $orderProduct->setQuantity($quantity);
             $orderProduct->setProduct($product);
+            $orderProduct->setPrice($price);
 
             // associer à un order deja existant
             $orderProduct->setUserOrder($order);

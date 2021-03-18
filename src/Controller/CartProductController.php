@@ -211,8 +211,26 @@ class CartProductController extends AbstractController
 
         // comparison du stock avec la quantité demandée
         $productStock = $product->getStock();
+    
+        if($newQuantity == 0){
+            // supprimer
 
-        if($productStock < $newQuantity){
+            // trouver le cartProduct avec le compte user et le produit
+            $cartProductArray = $cartProductRepository->findBy(["user" => $user, "product" => $product]);
+            $cartProduct = $cartProductArray[0];
+
+            // supprimer le cartProduct depuis le User
+            $user->removeCartProduct($cartProduct);
+
+            // supprimer le produit du panier
+            $this->em->remove($cartProduct);
+            $this->em->flush();
+
+            // retourner la réponse
+            $response = $this->json(["message" => "product delete from shopping cart"], 200);
+            return $response;
+
+        }else if($productStock < $newQuantity){
 
             // remettre l'ancienne quantité demandée
             $cartProductArray = $cartProductRepository->findBy(["user" => $user, "product" => $product]);
