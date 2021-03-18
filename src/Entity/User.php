@@ -10,8 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Serializer\Annotation\Groups;
-use DateTime;
-use Date;
+
 
 /**
  * @ORM\Entity(repositoryClass=UserRepository::class)
@@ -308,6 +307,10 @@ class User implements UserInterface
 
     public function getCardNumber(): ?int
     {
+        // $cardNumberString = strval($this->cardNumber);
+        // $lastNumbersOfCardNumber = substr($cardNumberString,-3);
+        // $protectedCardNumber = "***".$lastNumbersOfCardNumber;
+        // return $protectedCardNumber;
         return $this->cardNumber;
     }
 
@@ -336,6 +339,8 @@ class User implements UserInterface
 
     public function getCryptogram(): ?int
     {
+        
+        // return "***";
         return $this->cryptogram;
     }
 

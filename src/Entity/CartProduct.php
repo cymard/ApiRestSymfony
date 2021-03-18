@@ -8,9 +8,15 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 use App\Entity\Product;
+use Doctrine\ORM\Mapping\UniqueConstraint;
+
+
 
 /**
  * @ORM\Entity(repositoryClass=CartProductRepository::class)
+ * @ORM\Table(name="cart_product",
+ *      uniqueConstraints={@ORM\UniqueConstraint(name="article_unique",columns={"user_id","product_id"})}
+ * )
  */
 class CartProduct
 {

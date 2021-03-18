@@ -7,6 +7,7 @@ use Doctrine\ORM\Mapping as ORM;
 use App\Repository\OrderRepository;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Collections\ArrayCollection;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * @ORM\Entity(repositoryClass=OrderRepository::class)
@@ -18,62 +19,74 @@ class Order
      * @ORM\Id
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
+     * @Groups({"order"})
      */
     private $id;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"order"})
      */
     private $firstName;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"order"})
      */
     private $lastName;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"order"})
      */
     private $city;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"order"})
      */
     private $address;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"order"})
      */
     private $email;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"order"})
      */
     private $paymentMethod;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"order"})
      */
     private $cardName;
 
     /**
      * @ORM\Column(type="integer")
+     * @Groups({"order"})
      */
     private $cardNumber;
 
     /**
      * @ORM\Column(type="date")
+     * @Groups({"order"})
      */
     private $cardExpirationDate;
 
     /**
      * @ORM\Column(type="integer")
+     * @Groups({"order"})
      */
     private $cryptogram;
 
 
     /**
      * @ORM\Column(type="float")
+     * @Groups({"order"})
      */
     private $amount;
 
@@ -90,6 +103,7 @@ class Order
 
     /**
      * @ORM\Column(type="datetime")
+     * @Groups({"order"})
      */
     private $createdDate;
 
@@ -195,9 +209,12 @@ class Order
         return $this;
     }
 
-    public function getCardNumber(): ?int
+    public function getCardNumber()
     {
-        return $this->cardNumber;
+        // return $this->cardNumber;
+        $cardNumberString = substr($this->cardNumber, -3);
+        $protectedCardNumber = "***".strval($cardNumberString);
+        return $protectedCardNumber;
     }
 
     public function setCardNumber(int $cardNumber): self
@@ -207,9 +224,13 @@ class Order
         return $this;
     }
 
-    public function getCardExpirationDate(): ?\DateTimeInterface
+    public function getCardExpirationDate()
     {
-        return $this->cardExpirationDate;
+        // ?\DateTimeInterface
+        // return $this->cardExpirationDate;
+        $dateTime = $this->cardExpirationDate; // objet datetime sous format iso8601
+        $theDate = $dateTime->format('m/y'); // changement de format
+        return $theDate;
     }
 
     public function setCardExpirationDate(\DateTimeInterface $cardExpirationDate): self
@@ -297,9 +318,12 @@ class Order
         return $this;
     }
 
-    public function getCreatedDate(): ?\DateTimeInterface
+    public function getCreatedDate()
     {
-        return $this->createdDate;
+        // return $this->createdDate;
+        $dateTime = $this->createdDate; // objet datetime sous format iso8601
+        $theDate = $dateTime->format('d/m/y'); // changement de format
+        return $theDate;
     }
 
     public function setCreatedDate(\DateTimeInterface $createdDate): self
