@@ -186,7 +186,6 @@ class UserController extends AbstractController
         }
 
 
-
         // changer le mdp actuel par le nouveau mdp
             // crypter le nouveau mdp
         $newPasswordHashed =  password_hash ( $newPassword, PASSWORD_BCRYPT  , ["cost" => 12]);
@@ -200,17 +199,49 @@ class UserController extends AbstractController
 
         // réponse
         return $this->json([
-            'message' => "Mot de passe changé."
+            'message' => "Mot de passe modifié avec succès."
         ],200);
 
     }
 
+    /**
+     * @Route("/api/modify/email", name="user_modify_email", methods={"POST"})
+     * Modify actual email
+     */
+    public function modifyActualEmail(Request $request){
 
-    // // encoder le mdp
-    // $options = [
-    //     'cost' => 12,
-    // ];
-    // $hashedPassword = password_hash($inputPassword, PASSWORD_BCRYPT, $options);
-    // dd($hashedPassword);
+        // récuperer les données de la requête
+        $dataJson = $request->getContent();
+        $dataStdClass = json_decode($dataJson);
+        $data = (array) $dataStdClass;
+
+        // vérification du mdp
+        $user = $this->getUser();
+            // password_verify()
+        $password = $data["password"];
+        $hashedPassword = $user->getPassword();
+
+        $response = password_verify($password, $hashedPassword);
+
+        if($response !== true){
+            return $this->json([
+                'message' => "Le mot de passe entré est incorect."
+            ],403);
+        }
+
+        // changement de l'email
+            // setEmail()
+        $newEmail = $data["newEmail"];
+        $user->setEmail($newEmail);
+            
+            // enregistrer les données en bdd
+        $this->em->persist($user);
+        $this->em->flush();
+
+        // réponse
+        return $this->json([
+            'message' => "Email modifié avec succès."
+        ],200);
+    }
 
 }
