@@ -145,8 +145,11 @@ class ProductController extends AbstractController
             $em->flush();
 
             // 6) retourner le produit modifié
-            return $this->json($product, 201);
-
+            // return $this->json($product, 201);
+            return $this->json([
+                "status" => 201,
+                "message" => "Produit modifié"
+            ]);
         }catch(NotEncodableValueException $e){
             return $this->json([
                 "status" => 400,

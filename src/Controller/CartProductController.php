@@ -123,7 +123,6 @@ class CartProductController extends AbstractController
 
 
 
-
     /**
      * @Route("/api/cart/products", name="display_cart_products", methods={"GET"})
      * Display content of a shoppingCart
@@ -221,8 +220,8 @@ class CartProductController extends AbstractController
 
             // supprimer le cartProduct depuis le User
             $user->removeCartProduct($cartProduct);
-
             // supprimer le produit du panier
+
             $this->em->remove($cartProduct);
             $this->em->flush();
 

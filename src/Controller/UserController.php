@@ -151,5 +151,66 @@ class UserController extends AbstractController
     }
 
 
+    /**
+     * @Route("/api/modify/password", name="user_modify_password", methods={"POST"})
+     * Modify actual password
+     */
+    public function modifyActualPassword(Request $request)
+    {
+        // recuperer les données
+        $jsonData = $request->getContent();
+        $dataStdClass = json_decode($jsonData);
+        $data = (array) $dataStdClass;
+
+        if($data["newPasswordOne"] !== $data["newPasswordTwo"]){
+            // réponse les nouveaux mot de passe ne sont pas identiques
+            return $this->json([
+                'message' => "Les nouveaux mots de passe entrées ne sont pas identiques."
+            ],403);
+        }
+
+        $oldPassword = $data["oldPassword"];
+        $newPassword = $data["newPasswordOne"];
+
+        // verifier le mdp actuel
+            // connexion user
+        $user = $this->getUser();
+        $cryptedOldPassword = $user->getPassword();
+            // password_verify
+        $response = password_verify ( $oldPassword , $cryptedOldPassword );
+
+        if($response !== true){
+            return $this->json([
+                'message' => "Le mot de passe entré n'est pas le bon."
+            ],403);
+        }
+
+
+
+        // changer le mdp actuel par le nouveau mdp
+            // crypter le nouveau mdp
+        $newPasswordHashed =  password_hash ( $newPassword, PASSWORD_BCRYPT  , ["cost" => 12]);
+            
+            // remplacement du mdp
+        $user->setPassword($newPasswordHashed);
+            
+            // Mise à jour de la base de données 
+        $this->em->persist($user);
+        $this->em->flush();
+
+        // réponse
+        return $this->json([
+            'message' => "Mot de passe changé."
+        ],200);
+
+    }
+
+
+    // // encoder le mdp
+    // $options = [
+    //     'cost' => 12,
+    // ];
+    // $hashedPassword = password_hash($inputPassword, PASSWORD_BCRYPT, $options);
+    // dd($hashedPassword);
 
 }

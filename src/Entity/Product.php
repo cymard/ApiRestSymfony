@@ -115,14 +115,14 @@ class Product
         return $this;
     }
 
-    public function getImage(): ?string
+    public function getImage()
     {
         return $this->image;
     }
 
-    public function setImage(File $file = null)
+    public function setImage($image)
     {
-        $this->image = $file;
+        $this->image = $image;
 
         return $this;
     }
