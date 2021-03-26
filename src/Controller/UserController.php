@@ -151,5 +151,97 @@ class UserController extends AbstractController
     }
 
 
+    /**
+     * @Route("/api/modify/password", name="user_modify_password", methods={"POST"})
+     * Modify actual password
+     */
+    public function modifyActualPassword(Request $request)
+    {
+        // recuperer les données
+        $jsonData = $request->getContent();
+        $dataStdClass = json_decode($jsonData);
+        $data = (array) $dataStdClass;
+
+        if($data["newPasswordOne"] !== $data["newPasswordTwo"]){
+            // réponse les nouveaux mot de passe ne sont pas identiques
+            return $this->json([
+                'message' => "Les nouveaux mots de passe entrées ne sont pas identiques."
+            ],403);
+        }
+
+        $oldPassword = $data["oldPassword"];
+        $newPassword = $data["newPasswordOne"];
+
+        // verifier le mdp actuel
+            // connexion user
+        $user = $this->getUser();
+        $cryptedOldPassword = $user->getPassword();
+            // password_verify
+        $response = password_verify ( $oldPassword , $cryptedOldPassword );
+
+        if($response !== true){
+            return $this->json([
+                'message' => "Le mot de passe entré n'est pas le bon."
+            ],403);
+        }
+
+
+        // changer le mdp actuel par le nouveau mdp
+            // crypter le nouveau mdp
+        $newPasswordHashed =  password_hash ( $newPassword, PASSWORD_BCRYPT  , ["cost" => 12]);
+            
+            // remplacement du mdp
+        $user->setPassword($newPasswordHashed);
+            
+            // Mise à jour de la base de données 
+        $this->em->persist($user);
+        $this->em->flush();
+
+        // réponse
+        return $this->json([
+            'message' => "Mot de passe modifié avec succès."
+        ],200);
+
+    }
+
+    /**
+     * @Route("/api/modify/email", name="user_modify_email", methods={"POST"})
+     * Modify actual email
+     */
+    public function modifyActualEmail(Request $request){
+
+        // récuperer les données de la requête
+        $dataJson = $request->getContent();
+        $dataStdClass = json_decode($dataJson);
+        $data = (array) $dataStdClass;
+
+        // vérification du mdp
+        $user = $this->getUser();
+            // password_verify()
+        $password = $data["password"];
+        $hashedPassword = $user->getPassword();
+
+        $response = password_verify($password, $hashedPassword);
+
+        if($response !== true){
+            return $this->json([
+                'message' => "Le mot de passe entré est incorect."
+            ],403);
+        }
+
+        // changement de l'email
+            // setEmail()
+        $newEmail = $data["newEmail"];
+        $user->setEmail($newEmail);
+            
+            // enregistrer les données en bdd
+        $this->em->persist($user);
+        $this->em->flush();
+
+        // réponse
+        return $this->json([
+            'message' => "Email modifié avec succès."
+        ],200);
+    }
 
 }
