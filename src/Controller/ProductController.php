@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use GuzzleHttp\Client;
 use App\Entity\Product;
 use App\Repository\CommentRepository;
 use App\Repository\ProductRepository;
@@ -17,10 +18,19 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Serializer\Exception\NotEncodableValueException;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 
 class ProductController extends AbstractController
 {
+
+    private $client;
+
+    public function __construct(HttpClientInterface $client)
+    {
+        $this->client = $client;
+    }
+
     /**
      * Averaging of an array
      */
@@ -106,57 +116,95 @@ class ProductController extends AbstractController
         return $response;
     }
 
+    private function sendImageToImgbb($base64)
+    {
+        $response = $this->client->request('POST', 'https://api.imgbb.com/1/upload?expiration=15552000&key=602552f9aeec55ba40e0e73f6ab60d8b', [
+            'body' => [
+                "image" => $base64
+            ]
+        ]);
+        $status = $response->getStatusCode();
+        
+        if($status === 200){
+
+            $content = $response->getContent();
+
+            return $content;
+            // return $data;
+        }else{
+            return false;
+        }
+       
+       
+    }
+
+
     /**
      * @Route("/admin/product/{id}/edit", name="product_put", methods={"PUT"})
      * Modify a product
      */
     public function setProduct (Product $product, Request $request, SerializerInterface $serializerInterface,EntityManagerInterface $em, ValidatorInterface $validator)
     {
-        // essaie d'encoder la donnée
-        try{
-            // 1) recuperer le produit modifié
-            $json = $request->getContent();
-            $newProduct = $serializerInterface->deserialize($json,Product::class,"json",["groups" => "productWithoutComments"]);
- 
-            // 2) validation des données reçues
-            $errors = $validator->validate($newProduct,null,["groups" => "productWithoutComments"]);
+        $json = $request->getContent();
+        
+        $data = json_decode($json, true);
 
-            if (count($errors) > 0) {
-                /*
-                * Uses a __toString method on the $errors variable which is a
-                * ConstraintViolationList object. This gives us a nice string
-                * for debugging.
-                */
-                $errorsString = (string) $errors;
+        $newProductData = $serializerInterface->deserialize($json,Product::class,"json",["groups" => "productWithoutComments"]);
 
-                return new Response($errorsString);
+        $imageBase64 = $data["image"];
+
+        // appel API vers imgBB pour enregistrer l'image
+        if($imageBase64 !== null ){
+            $imgbbDataJson = $this->sendImageToImgbb($imageBase64);
+
+                // Vérification de la réponse de la requête
+            if($imgbbDataJson === false){
+                // response error
+                return $this->json([
+                    "status" => 500,
+                    "message" => "Impossible d'envoyer de télécharger l'image sur imgbb."
+                ]);
             }
+
+            // récupération de l'url de l'image
+            $imgbbData = json_decode($imgbbDataJson, true);
+            $imageUrl = $imgbbData["data"]["url"];
+            
+            // 3) recuperer le produit à modifier
+            // 4) faire la modification (pour tous les champs)
+            $product->setName($newProductData->getName());
+            $product->setPrice($newProductData->getPrice());
+            $product->setDescription($newProductData->getDescription());
+            $product->setImage($imageUrl);
+            $product->setStock($newProductData->getStock());
+
+        }else{
+            // pas de nouvelle image
 
             // 3) recuperer le produit à modifier
             // 4) faire la modification (pour tous les champs)
-            $product->setName($newProduct->getName());
-            $product->setPrice($newProduct->getPrice());
-            $product->setDescription($newProduct->getDescription());
-            $product->setImage($newProduct->getImage());
-            $product->setStock($newProduct->getStock());
+            $product->setName($newProductData->getName());
+            $product->setPrice($newProductData->getPrice());
+            $product->setDescription($newProductData->getDescription());
+            $product->setStock($newProductData->getStock());
 
-            // 5) Envoyer vers la bdd
-            $em->persist($product);
-            $em->flush();
-
-            // 6) retourner le produit modifié
-            // return $this->json($product, 201);
-            return $this->json([
-                "status" => 201,
-                "message" => "Produit modifié"
-            ]);
-        }catch(NotEncodableValueException $e){
-            return $this->json([
-                "status" => 400,
-                "erreur" => $e->getMessage()
-            ]);
         }
         
+
+        
+
+
+        // 5) Envoyer vers la bdd
+        $em->persist($product);
+        $em->flush();
+
+        // 6) retourner le produit modifié
+        // return $this->json($product, 201);
+        return $this->json([
+            "status" => 201,
+            "message" => "Produit modifié"
+        ]);
+
     }
 
     /**
@@ -308,4 +356,15 @@ class ProductController extends AbstractController
         }
     
     }
+
+    
+    // /**
+    //  * @Route("/admin/download/image", name="admin/download/image", methods={"POST"})
+    //  * Download image
+    //  */
+    // public function downloadImage()
+    // {
+    //     // récuperer la base64 de l'image
+    //     dd("ca marche");
+    // }
 }
