@@ -89,6 +89,14 @@ class OrderController extends AbstractController
 
         // deserialiser les données
         $data = $serializerInterface->deserialize($dataJson, Order::class, "json");
+
+        // vérification du amount
+        if($data->getAmount() === 0 ){
+            $response = new JsonResponse(['message' => "Le montant total ne peut être égal à 0"]);
+            return $response;
+        }
+
+
         $user = $this->getUser();
         $data->setUser($user);
         $this->transferCartProductToOrderProduct($data, $user);

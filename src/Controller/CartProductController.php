@@ -146,7 +146,7 @@ class CartProductController extends AbstractController
             $productInformationsArray = $productRepo->findBy(["id" => $productInformationsId]);
             $productInformations = $productInformationsArray[0];
 
-
+            
             // App\Entity\Product {#1037
             //     -id: 54
             //     -price: 44.0

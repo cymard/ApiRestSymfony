@@ -220,34 +220,64 @@ class ProductController extends AbstractController
 
             // 2) transformation du json en code
             $data = $serializerInterface->deserialize($json,Product::class,"json");
+            $imageBase64 = $data->getImage();
 
-            // 3) validation des données reçues
-            $errors = $validator->validate($data);
+            if($imageBase64 !== null){
+                // télécharger image vers imgbb
+                // mettre l'url dans la bdd
 
-            if (count($errors) > 0) {
-                /*
-                * Uses a __toString method on the $errors variable which is a
-                * ConstraintViolationList object. This gives us a nice string
-                * for debugging.
-                */
-                $errorsString = (string) $errors;
+                $imgbbDataJson = $this->sendImageToImgbb($imageBase64);
+                //  Vérification de la réponse de la requête
+                if($imgbbDataJson === false){
+                    // response error
+                    return $this->json([
+                        "status" => 500,
+                        "message" => "Impossible de télécharger l'image sur imgbb."
+                    ]);
+                }
 
-                return new Response($errorsString);
+                // récupération de l'url de l'image
+                $imgbbData = json_decode($imgbbDataJson, true);
+                $imageUrl = $imgbbData["data"]["url"];
+
+                $data->setImage($imageUrl);
+
+                // 4) envoyer les données en bdd
+                $em->persist($data);
+                $em->flush();
+
+            }else{
+                // 4) envoyer les données en bdd
+                $em->persist($data);
+                $em->flush();
+
             }
 
-            // 4) envoyer les données en bdd
-            $em->persist($data);
-            $em->flush();
-
             // 5) retourner le produit créé
-            $dataSerialized = $serializerInterface->serialize($data,"json",["groups" => "commentWithoutProduct"]);
+            $dataSerialized = $serializerInterface->serialize($data,"json",["groups" => "productWithoutComments"]);
 
-            
+
             $response = new Response();
             $response->headers->set('Content-type','application/json');
             $response->setStatusCode(Response::HTTP_OK);
             $response->setContent($dataSerialized);
             return $response;
+
+            // // 3) validation des données reçues
+            // $errors = $validator->validate($data);
+
+            // if (count($errors) > 0) {
+            //     /*
+            //     * Uses a __toString method on the $errors variable which is a
+            //     * ConstraintViolationList object. This gives us a nice string
+            //     * for debugging.
+            //     */
+            //     $errorsString = (string) $errors;
+
+            //     return new Response($errorsString);
+            // }
+
+            
             
         }catch(NotEncodableValueException $e){
             return $this->json([
