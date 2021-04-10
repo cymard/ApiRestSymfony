@@ -308,22 +308,23 @@ class OrderController extends AbstractController
             $ordersArray = $ordersCollection->toArray();
             $ordersPerPage = 9;
 
-            if($date === 'desc'){
-                $queryBuilder = $orderRepo->findAllOrdersOfEmail($userEmail);
-            }else if($date === 'asc'){
-                $queryBuilder = $orderRepo->findOrderByAscDate($userEmail);
-            }else{
-                $queryBuilder = $orderRepo->findAllOrdersOfEmail($userEmail);
-            }
+            // if($date === 'desc'){
+            //     $queryBuilder = $orderRepo->findAllOrdersOfEmail($userEmail);
+            // }else if($date === 'asc'){
+            //     $queryBuilder = $orderRepo->findOrderByAscDate($userEmail);
+            // }else{
+            //     $queryBuilder = $orderRepo->findAllOrdersOfEmail($userEmail);
+            // }
+            $data = $orderRepo->findAllOrdersByDate($userEmail, $date);
 
-            $allOrders = count($queryBuilder->getQuery()->getResult());
+            $allOrders = count($data->getQuery()->getResult());
             $pageNumber = ceil($allOrders/9);
             // pagination
             // recup la query
     
             // system de pagination
             $orders = $paginator->paginate(
-                $queryBuilder->getQuery(), // Requête contenant les données à paginer (ici nos articles)
+                $data->getQuery(), // Requête contenant les données à paginer (ici nos articles)
                 $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
                 $ordersPerPage // Nombre de résultats par page
     

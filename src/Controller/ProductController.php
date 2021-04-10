@@ -311,18 +311,20 @@ class ProductController extends AbstractController
 
 
             // 1) Récuperer les produits en bdd
-            if($category === "all"){
-                // $data = $productRepository->findAll();
-                $query = $em->createQuery(
-                    'SELECT product FROM App\Entity\Product product'
-                );
-            }else{
-                // $data = $productRepository->findBy(["category"=>$category]);
-                $query = $em->createQuery(
-                    'SELECT product FROM App\Entity\Product product WHERE product.category = :category'
-                )->setParameter('category' , $category);
-            }
-
+            // if($category === "all"){
+            //     // $data = $productRepository->findAll();
+            //     $query = $em->createQuery(
+            //         'SELECT product FROM App\Entity\Product product'
+            //     );
+            // }else{
+            //     // $data = $productRepository->findBy(["category"=>$category]);
+            //     $query = $em->createQuery(
+            //         'SELECT product FROM App\Entity\Product product WHERE product.category = :category'
+            //     )->setParameter('category' , $category);
+            // }
+            
+            $data = $productRepository->searchProductWithCategory($category);
+            $query = $data->getQuery();
 
             $productsPerPage = 9;
             $allProducts = count($query->getResult());
