@@ -34,53 +34,100 @@ class AdminController extends AbstractController
      * @Route("/admin/home", name="admin_product_category", methods={"GET"})
      * Display the products per page from a specific category
      */
-    public function getCategoryProducts (Request $request,  PaginatorInterface $paginator, NormalizerInterface $normalizerInterface, EntityManagerInterface $em)
+    public function getCategoryProducts (Request $request,ProductRepository $productRepository,  PaginatorInterface $paginator, NormalizerInterface $normalizerInterface, EntityManagerInterface $em)
     {
-        if($request->query->get('category') && $request->query->get('page') && $request->query->get('sorting')){
+        if($request->query->get('search') && $request->query->get('category') && $request->query->get('page') && $request->query->get('sorting')){
+            // récuperer la valeur de la recherche
+            $search =  $request->query->get('search');
+            $page = (int)$request->query->get('page');
+            $sort = $request->query->get('sorting');
+            $category =  $this->getCategory($request->query->get('category'));
+
+            
+
+            // regarder si sorting/ category ont la valeur par défaut ou pas et appeler le repo correspondant
+
+            // faire la recherche
+            $data = $productRepository->searchProductAdmin($search,$category, $sort);
+           
+            $query = $data->getQuery();
+
+        
+            $productsPerPage = 9;
+            $allProducts = count($query->getResult());
+            
+            $pageNumber = ceil ($allProducts/$productsPerPage);
+            
+            $articles = $paginator->paginate(
+                $query, // Requête contenant les données à paginer (ici nos articles)
+                $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
+                $productsPerPage // Nombre de résultats par page
+
+            );
+            
+            // convertion des objets en tableaux
+            $array = $normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
+
+            // responses
+            $response = new JsonResponse();
+            $response->headers->set('Content-Type', 'application/json');
+
+            // convertion des tableaux en json
+            $allResponses = json_encode(["productsPerPageNumber" => $productsPerPage,"search"=> $search ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "pageContent"=>$array]);
+
+            $response->setContent($allResponses);
+
+            return $response;
+
+
+        }else if($request->query->get('category') && $request->query->get('page') && $request->query->get('sorting') ){
             $sort = $request->query->get('sorting');
             $category =  $this->getCategory($request->query->get('category'));
             $page = (int)$request->query->get('page');
 
             
-
             // 1) return dql query
-            if($sort === "default"){
-                if($category === "all"){
-                    $query = $em->createQuery(
-                        'SELECT product FROM App\Entity\Product product'
-                    );
-                }else{
-                    $query = $em->createQuery(
-                        'SELECT product FROM App\Entity\Product product WHERE product.category = :category'
-                    )->setParameter('category' , $category);
-                }
+            // if($sort === "default"){
+            //     if($category === "all"){
+            //         $query = $em->createQuery(
+            //             'SELECT product FROM App\Entity\Product product'
+            //         );
+            //     }else{
+            //         $query = $em->createQuery(
+            //             'SELECT product FROM App\Entity\Product product WHERE product.category = :category'
+            //         )->setParameter('category' , $category);
+            //     }
                 
-            } else if($sort === "desc" || $sort === "asc"){
-                // mettre un parametre pour le ordre ne marche pas
-                if($category === "all"){
-                    if($sort === "asc"){
-                        $query = $em->createQuery(
-                            'SELECT product FROM App\Entity\Product product ORDER BY product.price ASC'
-                        );
-                    }else{
-                        $query = $em->createQuery(
-                            'SELECT product FROM App\Entity\Product product ORDER BY product.price DESC'
-                        );
-                    }
-                }else{
+            // } else if($sort === "desc" || $sort === "asc"){
+            //     // mettre un parametre pour le ordre ne marche pas
+            //     if($category === "all"){
+            //         if($sort === "asc"){
+            //             $query = $em->createQuery(
+            //                 'SELECT product FROM App\Entity\Product product ORDER BY product.price ASC'
+            //             );
+            //         }else{
+            //             $query = $em->createQuery(
+            //                 'SELECT product FROM App\Entity\Product product ORDER BY product.price DESC'
+            //             );
+            //         }
+            //     }else{
                     
-                    if($sort === "asc"){
-                        $query = $em->createQuery(
-                            'SELECT product FROM App\Entity\Product product WHERE product.category = :category ORDER BY product.price ASC'
-                        )->setParameter('category' , $category);
-                    }else{
-                        $query = $em->createQuery(
-                            'SELECT product FROM App\Entity\Product product WHERE product.category = :category ORDER BY product.price DESC'
-                        )->setParameter('category' , $category);
-                    }
+            //         if($sort === "asc"){
+            //             $query = $em->createQuery(
+            //                 'SELECT product FROM App\Entity\Product product WHERE product.category = :category ORDER BY product.price ASC'
+            //             )->setParameter('category' , $category);
+            //         }else{
+            //             $query = $em->createQuery(
+            //                 'SELECT product FROM App\Entity\Product product WHERE product.category = :category ORDER BY product.price DESC'
+            //             )->setParameter('category' , $category);
+            //         }
 
-                }
-            }
+            //     }
+            // }
+
+            $data = $productRepository->searchProductAdminWithCategory($category,$sort);
+
+            $query = $data->getQuery();
 
 
             $allProducts = count($query->getResult());

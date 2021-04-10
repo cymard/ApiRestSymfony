@@ -27,12 +27,66 @@ class ProductRepository extends ServiceEntityRepository
         return $this->findBy(array(), array('price' => $sort));
     }
 
-    public function searchProduct($name){
+    public function searchProductAdminWithCategory($category,$sort){
+        if($sort === 'default'){
+            $sort = 'ASC';
+        }
+
+        if($category === 'all'){
+            return $this->createQueryBuilder('p')
+            ->orderBy('p.price', $sort)
+            ;
+        }else{
+            return $this->createQueryBuilder('p')
+            ->andWhere('p.category = :category')
+            ->setParameter('category',$category)
+            ->orderBy('p.price', $sort)
+            ;
+        }
+    }
+
+    public function searchProductWithCategory($category){
+        if($category === 'all'){
+            return $this->createQueryBuilder('p')
+            ;
+        }else{
+            return $this->createQueryBuilder('p')
+            ->andWhere('p.category = :category')
+            ->setParameter('category',$category)
+            ;
+        }
+    }
+
+    public function searchProduct($name){ //,$category,$sort
         return $this->createQueryBuilder('p')
             ->andWhere('p.name LIKE :name')
             ->setParameter('name','%'.$name.'%' )
             ->orderBy('p.price', "ASC")
         ;
+    }
+
+    public function searchProductAdmin($name,$category,$sort){ //,$category,$sort
+
+        if($sort === 'default'){
+            $sort = 'ASC';
+        }
+
+        if($category === 'all'){
+            return $this->createQueryBuilder('p')
+            ->andWhere('p.name LIKE :name')
+            ->setParameter('name','%'.$name.'%' )
+            ->orderBy('p.price', $sort)
+        ;
+        }else{
+            return $this->createQueryBuilder('p')
+            ->andWhere('p.name LIKE :name')
+            ->andWhere('p.category = :category')
+            ->setParameter('name','%'.$name.'%' )
+            ->setParameter('category',$category )
+            ->orderBy('p.price', $sort)
+        ;
+        }
+        
     }
 
     // /**

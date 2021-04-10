@@ -28,27 +28,35 @@ class OrderRepository extends ServiceEntityRepository
             ->orderBy('o.createdDate' , 'DESC');
     }
 
-    /**
-    * Returns an array of searched Orders
-    */
-    public function findAllOrdersOfEmail($email)
+    public function findAllOrdersByDate($email,$date)
     {
         return $this->createQueryBuilder('o')
             ->andWhere('o.email = :email')
             ->setParameter("email",$email)
-            ->orderBy('o.createdDate' , 'DESC');
+            ->orderBy('o.createdDate' , $date);
     }
 
-    /**
-    * Returns an array of searched Orders
-    */
-    public function findOrderByAscDate($email)
-    {
-        return $this->createQueryBuilder('o')
-            ->andWhere('o.email = :email')
-            ->setParameter("email",$email)
-            ->orderBy('o.createdDate' , 'ASC');
-    }
+    // /**
+    // * Returns an array of searched Orders
+    // */
+    // public function findAllOrdersOfEmail($email)
+    // {
+    //     return $this->createQueryBuilder('o')
+    //         ->andWhere('o.email = :email')
+    //         ->setParameter("email",$email)
+    //         ->orderBy('o.createdDate' , 'DESC');
+    // }
+
+    // /**
+    // * Returns an array of searched Orders
+    // */
+    // public function findOrderByAscDate($email)
+    // {
+    //     return $this->createQueryBuilder('o')
+    //         ->andWhere('o.email = :email')
+    //         ->setParameter("email",$email)
+    //         ->orderBy('o.createdDate' , 'ASC');
+    // }
 
     /**
     * Returns an array of searched Orders
