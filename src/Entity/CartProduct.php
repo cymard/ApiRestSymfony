@@ -46,13 +46,10 @@ class CartProduct
      */
     private $product;
 
-
-
     public function getId(): ?int
     {
         return $this->id;
     }
-
 
     public function getQuantity(): ?int
     {
@@ -89,17 +86,5 @@ class CartProduct
 
         return $this;
     }
-
-
-
-
-
-   
-   
-
-
-    
-   
-
 
 }

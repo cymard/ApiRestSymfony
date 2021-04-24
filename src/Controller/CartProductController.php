@@ -2,10 +2,8 @@
 
 namespace App\Controller;
 
-use App\Entity\User;
 use App\Entity\Product;
 use App\Entity\CartProduct;
-use App\Repository\UserRepository;
 use App\Repository\ProductRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\CartProductRepository;
@@ -60,8 +58,6 @@ class CartProductController extends AbstractController
             return $response;
         }
 
-
-
         $cartProduct->setProduct($product); // surement l'entité product au complet
 
         //  $quantity
@@ -89,6 +85,7 @@ class CartProductController extends AbstractController
         $response->setStatusCode(Response::HTTP_OK);
         return $response;
     }
+
 
     public function addQuantityToCartProduct($id)
     {
@@ -118,9 +115,7 @@ class CartProductController extends AbstractController
         $this->em->persist($cartProduct);
         $this->em->flush();
 
-      }
-  
-
+    }
 
 
     /**
@@ -183,9 +178,6 @@ class CartProductController extends AbstractController
         $response->setStatusCode(Response::HTTP_OK);
         return $response;
     }
-
-
-
 
 
      /**

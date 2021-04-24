@@ -6,6 +6,7 @@ use DateTime;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\CommentRepository;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 
 /**
@@ -35,6 +36,7 @@ class Comment
 
     /**
      * @ORM\Column(type="integer")
+     * @Assert\Positive
      * @Groups({"commentWithoutProduct"})
      */
     private $note;

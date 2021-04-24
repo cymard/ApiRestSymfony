@@ -3,7 +3,6 @@
 namespace App\Controller;
 
 use App\Entity\order;
-use App\Entity\CartProduct;
 use App\Entity\OrderProduct;
 use App\Repository\OrderRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -179,7 +178,6 @@ class OrderController extends AbstractController
 
         $allProducts = [];
         
-       
         foreach($orderProducts as $orderProduct){
             $quantity = $orderProduct->getQuantity();
 
@@ -191,8 +189,6 @@ class OrderController extends AbstractController
             array_push($allProducts, $productInformations);
   
         }
-
-
 
         // response
         $response = new Response();
@@ -308,13 +304,7 @@ class OrderController extends AbstractController
             $ordersArray = $ordersCollection->toArray();
             $ordersPerPage = 9;
 
-            // if($date === 'desc'){
-            //     $queryBuilder = $orderRepo->findAllOrdersOfEmail($userEmail);
-            // }else if($date === 'asc'){
-            //     $queryBuilder = $orderRepo->findOrderByAscDate($userEmail);
-            // }else{
-            //     $queryBuilder = $orderRepo->findAllOrdersOfEmail($userEmail);
-            // }
+
             $data = $orderRepo->findAllOrdersByDate($userEmail, $date);
 
             $allOrders = count($data->getQuery()->getResult());

@@ -4,19 +4,15 @@ namespace App\Controller;
 
 use App\Entity\Comment;
 use App\Entity\Product;
-use App\Entity\CommentProduct;
 use Doctrine\ORM\EntityManagerInterface;
-use App\Repository\CommentProductRepository;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 use App\Repository\CommentRepository;
 
 class CommentController extends AbstractController

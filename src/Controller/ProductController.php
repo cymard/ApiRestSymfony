@@ -2,13 +2,10 @@
 
 namespace App\Controller;
 
-use GuzzleHttp\Client;
 use App\Entity\Product;
-use App\Repository\CommentRepository;
 use App\Repository\ProductRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Knp\Component\Pager\PaginatorInterface;
-use App\Repository\CommentProductRepository;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -38,7 +35,6 @@ class ProductController extends AbstractController
     {
         $rateNumber = count($array);
 
-        // $averaging = 
         $sum = 0;
 
         foreach($array as $number){
@@ -99,6 +95,7 @@ class ProductController extends AbstractController
 
     }
 
+
     /**
      * @Route("admin/product/{id}", name="product_delete", methods={"DELETE"})
      * Delete a product
@@ -115,6 +112,7 @@ class ProductController extends AbstractController
         $response = new Response("Product deleted");
         return $response;
     }
+
 
     private function sendImageToImgbb($base64)
     {
@@ -190,10 +188,6 @@ class ProductController extends AbstractController
 
         }
         
-
-        
-
-
         // 5) Envoyer vers la bdd
         $em->persist($product);
         $em->flush();
@@ -206,6 +200,8 @@ class ProductController extends AbstractController
         ]);
 
     }
+
+
 
     /**
      * @Route("/admin/products", name="product_post", methods={"POST"})
@@ -309,20 +305,6 @@ class ProductController extends AbstractController
             $category = $this->getCategory($request->query->get("category"));
             $page = (int)$request->query->get("page");
 
-
-            // 1) Récuperer les produits en bdd
-            // if($category === "all"){
-            //     // $data = $productRepository->findAll();
-            //     $query = $em->createQuery(
-            //         'SELECT product FROM App\Entity\Product product'
-            //     );
-            // }else{
-            //     // $data = $productRepository->findBy(["category"=>$category]);
-            //     $query = $em->createQuery(
-            //         'SELECT product FROM App\Entity\Product product WHERE product.category = :category'
-            //     )->setParameter('category' , $category);
-            // }
-            
             $data = $productRepository->searchProductWithCategory($category);
             $query = $data->getQuery();
 
@@ -389,14 +371,4 @@ class ProductController extends AbstractController
     
     }
 
-    
-    // /**
-    //  * @Route("/admin/download/image", name="admin/download/image", methods={"POST"})
-    //  * Download image
-    //  */
-    // public function downloadImage()
-    // {
-    //     // récuperer la base64 de l'image
-    //     dd("ca marche");
-    // }
 }

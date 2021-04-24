@@ -87,15 +87,11 @@ class Product
     private $cartProducts;
 
 
-
-
-
     public function __construct()
     {
         $this->comments = new ArrayCollection();
         $this->cartProducts = new ArrayCollection();
     }
-
 
     public function getId(): ?int
     {

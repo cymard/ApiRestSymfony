@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Repository\UserAdminRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * @ORM\Entity(repositoryClass=UserAdminRepository::class)
@@ -20,6 +21,10 @@ class UserAdmin implements UserInterface
 
     /**
      * @ORM\Column(type="string", length=180, unique=true)
+     * @Assert\NotBlank
+     * @Assert\Email(
+     *     message = "L'email '{{ value }}' n'est pas valide."
+     * )
      */
     private $email;
 

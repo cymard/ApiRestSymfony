@@ -2,16 +2,12 @@
 
 namespace App\Controller;
 
-
-use App\Entity\Product;
 use App\Repository\ProductRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Knp\Component\Pager\PaginatorInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
@@ -42,10 +38,6 @@ class AdminController extends AbstractController
             $page = (int)$request->query->get('page');
             $sort = $request->query->get('sorting');
             $category =  $this->getCategory($request->query->get('category'));
-
-            
-
-            // regarder si sorting/ category ont la valeur par défaut ou pas et appeler le repo correspondant
 
             // faire la recherche
             $data = $productRepository->searchProductAdmin($search,$category, $sort);
@@ -85,50 +77,9 @@ class AdminController extends AbstractController
             $category =  $this->getCategory($request->query->get('category'));
             $page = (int)$request->query->get('page');
 
-            
-            // 1) return dql query
-            // if($sort === "default"){
-            //     if($category === "all"){
-            //         $query = $em->createQuery(
-            //             'SELECT product FROM App\Entity\Product product'
-            //         );
-            //     }else{
-            //         $query = $em->createQuery(
-            //             'SELECT product FROM App\Entity\Product product WHERE product.category = :category'
-            //         )->setParameter('category' , $category);
-            //     }
-                
-            // } else if($sort === "desc" || $sort === "asc"){
-            //     // mettre un parametre pour le ordre ne marche pas
-            //     if($category === "all"){
-            //         if($sort === "asc"){
-            //             $query = $em->createQuery(
-            //                 'SELECT product FROM App\Entity\Product product ORDER BY product.price ASC'
-            //             );
-            //         }else{
-            //             $query = $em->createQuery(
-            //                 'SELECT product FROM App\Entity\Product product ORDER BY product.price DESC'
-            //             );
-            //         }
-            //     }else{
-                    
-            //         if($sort === "asc"){
-            //             $query = $em->createQuery(
-            //                 'SELECT product FROM App\Entity\Product product WHERE product.category = :category ORDER BY product.price ASC'
-            //             )->setParameter('category' , $category);
-            //         }else{
-            //             $query = $em->createQuery(
-            //                 'SELECT product FROM App\Entity\Product product WHERE product.category = :category ORDER BY product.price DESC'
-            //             )->setParameter('category' , $category);
-            //         }
-
-            //     }
-            // }
-
             $data = $productRepository->searchProductAdminWithCategory($category,$sort);
 
             $query = $data->getQuery();
-
 
             $allProducts = count($query->getResult());
             $productsPerPage = 9;
@@ -174,13 +125,11 @@ class AdminController extends AbstractController
 
         foreach($idToDelete->data as $id ){
             // identifier le produit
-
             $product = $repo->find($id);
 
             // le delete
             $entityManager->remove($product);
             $entityManager->flush();
-
         }
 
         $response = new JsonResponse(['status' => 202,'message' => 'All products deleted']);

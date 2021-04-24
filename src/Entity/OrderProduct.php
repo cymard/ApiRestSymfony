@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\OrderProductRepository;
+use Symfony\Component\Validator\Constraints as Assert;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
@@ -19,9 +20,9 @@ class OrderProduct
 
     /**
      * @ORM\Column(type="integer")
+     * @Assert\PositiveOrZero
      */
     private $quantity;
-
 
     /**
      * @ORM\ManyToOne(targetEntity=Order::class, inversedBy="orderProducts", cascade={"persist", "remove"})
@@ -37,6 +38,7 @@ class OrderProduct
 
     /**
      * @ORM\Column(type="float")
+     * @Assert\PositiveOrZero
      */
     private $price;
 
@@ -56,7 +58,6 @@ class OrderProduct
 
         return $this;
     }
-
 
     public function getUserOrder(): ?Order
     {

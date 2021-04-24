@@ -2,9 +2,7 @@
 
 namespace App\Controller;
 
-use App\Entity\CartProduct;
 use App\Entity\User;
-use App\Entity\ShoppingCart;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;

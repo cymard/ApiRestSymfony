@@ -3,12 +3,11 @@
 namespace App\Controller;
 
 use App\Entity\Contact;
+use App\Repository\UserAdminRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
-
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
@@ -22,7 +21,7 @@ class ContactController extends AbstractController
     /**
      * @Route("/contact", name="contact")
      */
-    public function index(Request $request, EntityManagerInterface $entityManager, MailerInterface $mailer): Response
+    public function index(Request $request, EntityManagerInterface $entityManager, MailerInterface $mailer, UserAdminRepository $userAdminRepository): Response
     {
         
         
@@ -56,17 +55,39 @@ class ContactController extends AbstractController
             $contact->setLastName($data['last_name']);
             $contact->setMessage($data['message']);
             
+            // $email = (new Email())
+            //     ->from('site22web22@gmail.com')
+            //     ->to($data['email'])
+            //     ->subject('Vous nous avez contacté')
+            //     ->html('
+            //         <p>Bonjour '. $data['first_name'].', </p>
+            //         <br>
+            //         <p>Merci de nous avoir contacté, nous vous répondrons dans les plus brefs délais.</p>
+            //         <br>
+            //         <p>Cordialement</p>
+            //     ');
+
+            // $mailer->send($email);
+
+            // récuperer les emails de tous les admins
+            $adminsArray = $userAdminRepository->findAll();
+            $admins = $adminsArray;
+            $emailsAdmins = [];
+            foreach ($admins as $admin){
+                $email = $admin->getEmail();
+                array_push($emailsAdmins, $email);
+            }
+
             // envoie email
             $email = (new Email())
                 ->from('site22web22@gmail.com')
-                ->to($data['email'])
-                ->subject('Vous nous avez contacté')
+                ->to(...$emailsAdmins)
+                ->subject($data['first_name'].' vous a contacté')
                 ->html('
-                    <p>Bonjour '. $data['first_name'].', </p>
-                    <br>
-                    <p>Merci de nous avoir contacté, nous vous répondrons dans les plus brefs délais.</p>
-                    <br>
-                    <p>Cordialement</p>
+                    <p>Prénom: '.$data['first_name'].'</p>
+                    <p>Nom: '.$data['last_name'].'</p>
+                    <p>Email: '.$data['email'].'</p>
+                    <p>Message: '.$data['message'].'</p>
                 ');
 
             $mailer->send($email);

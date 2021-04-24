@@ -36,6 +36,15 @@ class UserAdminRepository extends ServiceEntityRepository implements PasswordUpg
         $this->_em->flush();
     }
 
+    // public function GetUserAdminEmails()
+    // {
+    //     $this->createQueryBuilder('a')
+    //         ->andWhere('a.email')
+    //         ->getQuery()
+    //         ->getResult()
+    //         ;
+    // }
+
     // /**
     //  * @return UserAdmin[] Returns an array of UserAdmin objects
     //  */

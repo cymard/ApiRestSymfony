@@ -8,6 +8,7 @@ use App\Repository\OrderRepository;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * @ORM\Entity(repositoryClass=OrderRepository::class)
@@ -49,12 +50,20 @@ class Order
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Assert\NotBlank
+     * @Assert\Email(
+     *     message = "L'email '{{ value }}' n'est pas valide."
+     * )
      * @Groups({"order"})
      */
     private $email;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Assert\Choice(
+     *     choices = {"VISA", "MasterCard", "American Express"},
+     *     message = "Choisissez une méthode de paiement valide."
+     * )
      * @Groups({"order"})
      */
     private $paymentMethod;
@@ -67,6 +76,10 @@ class Order
 
     /**
      * @ORM\Column(type="integer")
+     * @Assert\CardScheme(
+     *     schemes={"VISA"},
+     *     message="Votre numéro de carte est invalide."
+     * )
      * @Groups({"order"})
      */
     private $cardNumber;
@@ -79,6 +92,9 @@ class Order
 
     /**
      * @ORM\Column(type="integer")
+     * @Assert\Positive
+     * @Assert\GreaterThanOrEqual(100)
+     * @Assert\LessThan(1000)
      * @Groups({"order"})
      */
     private $cryptogram;
@@ -86,6 +102,7 @@ class Order
 
     /**
      * @ORM\Column(type="float")
+     * @Assert\Positive
      * @Groups({"order"})
      */
     private $amount;
@@ -113,12 +130,6 @@ class Order
         // DateTime::createFromFormat('j-M-Y', date("D M d, Y G:i"));
         $this->orderProducts = new ArrayCollection();
     }
-
-
-    // /**
-    //  * @ORM\Column(type="date")
-    //  */
-    // private $testest;
 
     public function getId(): ?int
     {
@@ -263,18 +274,6 @@ class Order
 
         return $this;
     }
-
-    // public function getTestest(): ?\DateTimeInterface
-    // {
-    //     return $this->testest;
-    // }
-
-    // public function setTestest(\DateTimeInterface $testest): self
-    // {
-    //     $this->testest = $testest;
-
-    //     return $this;
-    // }
 
     /**
      * @return Collection|OrderProduct[]
