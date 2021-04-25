@@ -2,11 +2,9 @@
 
 namespace App\Entity;
 
-use App\Repository\ProductRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Serializer\Annotation\Groups;
 
@@ -192,7 +190,6 @@ class Product
     public function removeComment(Comment $comment): self
     {
         if ($this->comments->removeElement($comment)) {
-            // set the owning side to null (unless already changed)
             if ($comment->getProduct() === $this) {
                 $comment->setProduct(null);
             }
@@ -222,7 +219,6 @@ class Product
     public function removeCartProduct(CartProduct $cartProduct): self
     {
         if ($this->cartProducts->removeElement($cartProduct)) {
-            // set the owning side to null (unless already changed)
             if ($cartProduct->getProduct() === $this) {
                 $cartProduct->setProduct(null);
             }

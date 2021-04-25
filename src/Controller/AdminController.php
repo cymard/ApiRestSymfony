@@ -30,9 +30,10 @@ class AdminController extends AbstractController
      * @Route("/admin/home", name="admin_product_category", methods={"GET"})
      * Display the products per page from a specific category
      */
-    public function getCategoryProducts (Request $request,ProductRepository $productRepository,  PaginatorInterface $paginator, NormalizerInterface $normalizerInterface, EntityManagerInterface $em)
+    public function getCategoryProducts (Request $request,ProductRepository $productRepository,  PaginatorInterface $paginator, NormalizerInterface $normalizerInterface)
     {
         if($request->query->get('search') && $request->query->get('category') && $request->query->get('page') && $request->query->get('sorting')){
+
             // récuperer la valeur de la recherche
             $search =  $request->query->get('search');
             $page = (int)$request->query->get('page');
@@ -43,7 +44,6 @@ class AdminController extends AbstractController
             $data = $productRepository->searchProductAdmin($search,$category, $sort);
            
             $query = $data->getQuery();
-
         
             $productsPerPage = 9;
             $allProducts = count($query->getResult());
@@ -57,14 +57,14 @@ class AdminController extends AbstractController
 
             );
             
-            // convertion des objets en tableaux
+            // conversion des objets en tableaux
             $array = $normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
 
-            // responses
+            
             $response = new JsonResponse();
             $response->headers->set('Content-Type', 'application/json');
 
-            // convertion des tableaux en json
+            // conversion des tableaux en json
             $allResponses = json_encode(["productsPerPageNumber" => $productsPerPage,"search"=> $search ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "pageContent"=>$array]);
 
             $response->setContent($allResponses);
@@ -92,15 +92,14 @@ class AdminController extends AbstractController
                 $productsPerPage // Nombre de résultats par page
             );
 
-            // dd($articles);
-            // convertion des objets en tableaux
+            // conversion des objets en tableaux
             $array = $normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
  
             // responses
             $response = new JsonResponse();
             $response->headers->set('Content-Type', 'application/json');
 
-            // convertion des tableaux en json
+            // conversion des tableaux en json
             $allResponses = json_encode(["productsPerPageNumber" => $productsPerPage,"category"=> $category ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "pageContent"=>$array]);
 
             $response->setContent($allResponses);
@@ -127,7 +126,6 @@ class AdminController extends AbstractController
             // identifier le produit
             $product = $repo->find($id);
 
-            // le delete
             $entityManager->remove($product);
             $entityManager->flush();
         }

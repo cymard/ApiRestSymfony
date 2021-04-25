@@ -36,28 +36,6 @@ class OrderRepository extends ServiceEntityRepository
             ->orderBy('o.createdDate' , $date);
     }
 
-    // /**
-    // * Returns an array of searched Orders
-    // */
-    // public function findAllOrdersOfEmail($email)
-    // {
-    //     return $this->createQueryBuilder('o')
-    //         ->andWhere('o.email = :email')
-    //         ->setParameter("email",$email)
-    //         ->orderBy('o.createdDate' , 'DESC');
-    // }
-
-    // /**
-    // * Returns an array of searched Orders
-    // */
-    // public function findOrderByAscDate($email)
-    // {
-    //     return $this->createQueryBuilder('o')
-    //         ->andWhere('o.email = :email')
-    //         ->setParameter("email",$email)
-    //         ->orderBy('o.createdDate' , 'ASC');
-    // }
-
     /**
     * Returns an array of searched Orders
     */
@@ -68,33 +46,4 @@ class OrderRepository extends ServiceEntityRepository
             ->setParameter("email",$search.'%')
             ->orderBy('o.email' ,'DESC');
     }
-
-    // /**
-    //  * @return Order[] Returns an array of Order objects
-    //  */
-    /*
-    public function findByExampleField($value)
-    {
-        return $this->createQueryBuilder('o')
-            ->andWhere('o.exampleField = :val')
-            ->setParameter('val', $value)
-            ->orderBy('o.id', 'ASC')
-            ->setMaxResults(10)
-            ->getQuery()
-            ->getResult()
-        ;
-    }
-    */
-
-    /*
-    public function findOneBySomeField($value): ?Order
-    {
-        return $this->createQueryBuilder('o')
-            ->andWhere('o.exampleField = :val')
-            ->setParameter('val', $value)
-            ->getQuery()
-            ->getOneOrNullResult()
-        ;
-    }
-    */
 }

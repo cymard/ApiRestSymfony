@@ -50,14 +50,13 @@ class ProductController extends AbstractController
      * @Route("/product/{id}", name="product_get", methods={"GET"})
      * Display one product
      */
-    public function getProduct (Product $product,  NormalizerInterface $normalizerInterface, SerializerInterface $serializerInterface,$id)
+    public function getProduct (Product $product,  NormalizerInterface $normalizerInterface)
     {
        
-        // Le product
+        // le produit
         $productInArrayFormat = $normalizerInterface->normalize($product,null,["groups" => "productWithoutComments"]);
        
-
-        // Les commentaires
+        // les commentaires
         $commentsInCollectionFormat = $product->getComments();
         $commentsInObjectFormat = $commentsInCollectionFormat->toArray();
         $commentsNormalized = []; 
@@ -66,10 +65,8 @@ class ProductController extends AbstractController
         $allRates = [];
 
         foreach ($commentsInObjectFormat as $comment) {
-            // dd($comment);
             array_unshift($allRates, $comment->getNote());
-            $comment = $normalizerInterface->normalize($comment, null , ["groups" => "commentWithoutProduct"]); // fait passer les objets sous forme de tableaux
-            // dd($comment["date"]);
+            $comment = $normalizerInterface->normalize($comment, null , ["groups" => "commentWithoutProduct"]);
             array_unshift($commentsNormalized, $comment);
         }
 
@@ -77,22 +74,16 @@ class ProductController extends AbstractController
         if(count($allRates) > 0){
             $averaging = $this->averaging($allRates);
             $rateNumber = count($allRates);
-    
             $allDataJson = json_encode(["product" => $productInArrayFormat, "comments" => $commentsNormalized, "averaging" => $averaging, "rateNumber" => $rateNumber]); 
         }else{
-    
             $allDataJson = json_encode(["product" => $productInArrayFormat, "comments" => $commentsNormalized, "averaging" => 0, "rateNumber" => 0]); 
-    
         }
         
-       
-        // La réponse en json
         $response = new Response();
         $response->setContent($allDataJson);
         $response->headers->set('Content-type','application/json');
         $response->setStatusCode(Response::HTTP_OK);
         return $response;
-
     }
 
 
@@ -102,13 +93,9 @@ class ProductController extends AbstractController
      */
     public function deleteProduct (Product $product,EntityManagerInterface $em)
     {
-        // gerer : erreur no product
-        // 1) recuperer le produit
-        // 2) supprimer le produit
         $em->remove($product);
         $em->flush();
 
-        // 3) retourner la reponse (status 200)
         $response = new Response("Product deleted");
         return $response;
     }
@@ -121,19 +108,15 @@ class ProductController extends AbstractController
                 "image" => $base64
             ]
         ]);
+
         $status = $response->getStatusCode();
-        
+    
         if($status === 200){
-
             $content = $response->getContent();
-
             return $content;
-            // return $data;
         }else{
             return false;
         }
-       
-       
     }
 
 
@@ -141,7 +124,7 @@ class ProductController extends AbstractController
      * @Route("/admin/product/{id}/edit", name="product_put", methods={"PUT"})
      * Modify a product
      */
-    public function setProduct (Product $product, Request $request, SerializerInterface $serializerInterface,EntityManagerInterface $em, ValidatorInterface $validator)
+    public function setProduct (Product $product, Request $request, SerializerInterface $serializerInterface,EntityManagerInterface $em)
     {
         $json = $request->getContent();
         
@@ -155,7 +138,7 @@ class ProductController extends AbstractController
         if($imageBase64 !== null ){
             $imgbbDataJson = $this->sendImageToImgbb($imageBase64);
 
-                // Vérification de la réponse de la requête
+            //  Vérification de la réponse de la requête
             if($imgbbDataJson === false){
                 // response error
                 return $this->json([
@@ -168,8 +151,7 @@ class ProductController extends AbstractController
             $imgbbData = json_decode($imgbbDataJson, true);
             $imageUrl = $imgbbData["data"]["url"];
             
-            // 3) recuperer le produit à modifier
-            // 4) faire la modification (pour tous les champs)
+            // récuperer le produit et le modifier
             $product->setName($newProductData->getName());
             $product->setPrice($newProductData->getPrice());
             $product->setDescription($newProductData->getDescription());
@@ -178,22 +160,16 @@ class ProductController extends AbstractController
 
         }else{
             // pas de nouvelle image
-
-            // 3) recuperer le produit à modifier
-            // 4) faire la modification (pour tous les champs)
+            // récuperer le produit et le modifier
             $product->setName($newProductData->getName());
             $product->setPrice($newProductData->getPrice());
             $product->setDescription($newProductData->getDescription());
             $product->setStock($newProductData->getStock());
-
         }
         
-        // 5) Envoyer vers la bdd
         $em->persist($product);
         $em->flush();
 
-        // 6) retourner le produit modifié
-        // return $this->json($product, 201);
         return $this->json([
             "status" => 201,
             "message" => "Produit modifié"
@@ -207,22 +183,19 @@ class ProductController extends AbstractController
      * @Route("/admin/products", name="product_post", methods={"POST"})
      * Create a product
      */
-    public function createProduct (Request $request, SerializerInterface $serializerInterface, ValidatorInterface $validator, EntityManagerInterface $em)
+    public function createProduct (Request $request, SerializerInterface $serializerInterface, EntityManagerInterface $em)
     {
         try{
-            // 1) recuperer les données du produit
             $json = $request->getContent();
-            
 
-            // 2) transformation du json en code
             $data = $serializerInterface->deserialize($json,Product::class,"json");
             $imageBase64 = $data->getImage();
 
             if($imageBase64 !== null){
                 // télécharger image vers imgbb
                 // mettre l'url dans la bdd
-
                 $imgbbDataJson = $this->sendImageToImgbb($imageBase64);
+
                 //  Vérification de la réponse de la requête
                 if($imgbbDataJson === false){
                     // response error
@@ -238,42 +211,21 @@ class ProductController extends AbstractController
 
                 $data->setImage($imageUrl);
 
-                // 4) envoyer les données en bdd
                 $em->persist($data);
                 $em->flush();
 
             }else{
-                // 4) envoyer les données en bdd
                 $em->persist($data);
                 $em->flush();
 
             }
 
-            // 5) retourner le produit créé
             $dataSerialized = $serializerInterface->serialize($data,"json",["groups" => "productWithoutComments"]);
-
-
             $response = new Response();
             $response->headers->set('Content-type','application/json');
             $response->setStatusCode(Response::HTTP_OK);
             $response->setContent($dataSerialized);
             return $response;
-
-            // // 3) validation des données reçues
-            // $errors = $validator->validate($data);
-
-            // if (count($errors) > 0) {
-            //     /*
-            //     * Uses a __toString method on the $errors variable which is a
-            //     * ConstraintViolationList object. This gives us a nice string
-            //     * for debugging.
-            //     */
-            //     $errorsString = (string) $errors;
-
-            //     return new Response($errorsString);
-            // }
-
-            
             
         }catch(NotEncodableValueException $e){
             return $this->json([
@@ -298,7 +250,7 @@ class ProductController extends AbstractController
      * @Route("/products", name="product_category", methods={"GET"})
      * Display the products per page from a specific category
      */
-    public function getCategoryProducts (EntityManagerInterface $em,ProductRepository $productRepository,Request $request,  PaginatorInterface $paginator, NormalizerInterface $normalizerInterface)
+    public function getCategoryProducts (ProductRepository $productRepository,Request $request,  PaginatorInterface $paginator, NormalizerInterface $normalizerInterface)
     {
         if( $request->query->get('category') &&$request->query->get('page') ){
 
@@ -312,23 +264,17 @@ class ProductController extends AbstractController
             $allProducts = count($query->getResult());
             $pageNumber = ceil ($allProducts/$productsPerPage);
 
-
             $articles = $paginator->paginate(
                 $query, // Requête contenant les données à paginer (ici nos articles)
                 $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
                 $productsPerPage // Nombre de résultats par page
-
             );
 
-  
-            // convertion des objets en tableaux
             $array = $normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
 
-            // responses
             $response = new JsonResponse();
             $response->headers->set('Content-Type', 'application/json');
 
-            // convertion des tableaux en json
             $allResponses = json_encode(["productsPerPageNumber" => $productsPerPage,"category"=> $category ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "pageContent"=>$array]);
 
             $response->setContent($allResponses);
@@ -342,7 +288,6 @@ class ProductController extends AbstractController
             $data = $productRepository->searchProduct($search);
             $query = $data->getQuery();
 
-            
             $productsPerPage = 9;
             $allProducts = count($query->getResult());
             $pageNumber = ceil ($allProducts/$productsPerPage);
@@ -351,17 +296,13 @@ class ProductController extends AbstractController
                 $query, // Requête contenant les données à paginer (ici nos articles)
                 $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
                 $productsPerPage // Nombre de résultats par page
-
             );
 
-            // convertion des objets en tableaux
             $array = $normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
 
-            // responses
             $response = new JsonResponse();
             $response->headers->set('Content-Type', 'application/json');
 
-            // convertion des tableaux en json
             $allResponses = json_encode(["productsPerPageNumber" => $productsPerPage,"search"=> $search ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "data"=>$array]);
 
             $response->setContent($allResponses);

@@ -4,7 +4,6 @@ namespace App\Entity;
 
 use DateTime;
 use Doctrine\ORM\Mapping as ORM;
-use App\Repository\OrderRepository;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\Serializer\Annotation\Groups;
@@ -127,7 +126,6 @@ class Order
     public function __construct()
     {
         $this->createdDate = new DateTime();
-        // DateTime::createFromFormat('j-M-Y', date("D M d, Y G:i"));
         $this->orderProducts = new ArrayCollection();
     }
 
@@ -222,7 +220,6 @@ class Order
 
     public function getCardNumber()
     {
-        // return $this->cardNumber;
         $cardNumberString = substr($this->cardNumber, -3);
         $protectedCardNumber = "***".strval($cardNumberString);
         return $protectedCardNumber;
@@ -237,8 +234,6 @@ class Order
 
     public function getCardExpirationDate()
     {
-        // ?\DateTimeInterface
-        // return $this->cardExpirationDate;
         $dateTime = $this->cardExpirationDate; // objet datetime sous format iso8601
         $theDate = $dateTime->format('m/y'); // changement de format
         return $theDate;
@@ -296,7 +291,6 @@ class Order
     public function removeOrderProduct(OrderProduct $orderProduct): self
     {
         if ($this->orderProducts->removeElement($orderProduct)) {
-            // set the owning side to null (unless already changed)
             if ($orderProduct->getUserOrder() === $this) {
                 $orderProduct->setUserOrder(null);
             }
@@ -319,7 +313,6 @@ class Order
 
     public function getCreatedDate()
     {
-        // return $this->createdDate;
         $dateTime = $this->createdDate; // objet datetime sous format iso8601
         $theDate = $dateTime->format('d/m/y'); // changement de format
         return $theDate;
