@@ -15,13 +15,56 @@ use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
 
 
+
+
 class UserController extends AbstractController
 {
     private $em;
+    private $validator;
+    private $userPasswordEncoderInterface;
 
-    public function __construct(EntityManagerInterface $em)
+    public function __construct(EntityManagerInterface $em, ValidatorInterface $validator, UserPasswordEncoderInterface $userPasswordEncoderInterface)
     {
         $this->em = $em;
+        $this->validator = $validator;
+        $this->userPasswordEncoderInterface = $userPasswordEncoderInterface;
+    }
+
+    private function sendNewResponseJson($dataJsonFormat)
+    {
+        $response = new Response();
+        $response->setContent($dataJsonFormat);
+        $response->headers->set('Content-Type', 'application/json');
+        return $response;
+    }
+
+    private function validateDataWithConstraints ($data)
+    {
+        $errors = $this->validator->validate($data);
+        if (count($errors) > 0) {
+            return $this->json($errors,400);
+        }
+        return new Response('Les données sont valides.');
+    }
+
+    private function encryptDataPassword ($data)
+    {
+        $user = new User();
+        $password = $data->getPassword(); // password qui doit être crypté
+        $passwordHashed = $this->userPasswordEncoderInterface->encodePassword($user, $password);
+        $data->setPassword($passwordHashed);
+
+        return $data;
+    }
+
+    private function transformDataJsonIntoDataArray()
+    {
+        $request = new Request();
+        $dataJson = $request->getContent();
+        $dataStdClass = json_decode($dataJson);
+        $data = (array) $dataStdClass;
+
+        return $data;
     }
 
     /**
@@ -31,14 +74,10 @@ class UserController extends AbstractController
     public function getUsers(UserRepository $userRepository, SerializerInterface $serializerInterface)
     {
         $data = $userRepository->findAll();
-        $json = $serializerInterface->serialize($data,"json");
+        $dataJsonFormat = $serializerInterface->serialize($data,"json");
 
-        if(!empty($json)){
-            $response = new Response();
-            $response->setContent($json);
-            $response->headers->set('Content-Type', 'application/json');
-            
-            return $response;
+        if(!empty($dataJsonFormat)){
+            return $this->sendNewResponseJson($dataJsonFormat);
         }
     }
 
@@ -49,14 +88,10 @@ class UserController extends AbstractController
     public function getUserInformation( SerializerInterface $serializerInterface)
     {
         $user = $this->getUser();
-        $userJson = $serializerInterface->serialize($user, "json", ["groups" => "UserInformation"]);
+        $userJsonFormat = $serializerInterface->serialize($user, "json", ["groups" => "UserInformation"]);
 
-        if(!empty($userJson)){
-            $response = new Response();
-            $response->setContent($userJson);
-            $response->headers->set('Content-Type', 'application/json');
-            
-            return $response;
+        if(!empty($userJsonFormat)){
+            return $this->sendNewResponseJson($userJsonFormat);
         }
     }
 
@@ -64,27 +99,17 @@ class UserController extends AbstractController
      * @Route("/register", name="register", methods={"POST"})
      * Create an account
      */
-    public function register(Request $request, SerializerInterface $serializerInterface, EntityManagerInterface $em ,ValidatorInterface $validator,UserPasswordEncoderInterface $encoder)
+    public function register(Request $request, SerializerInterface $serializerInterface, EntityManagerInterface $em ,UserPasswordEncoderInterface $encoder)
     {
         $json = $request->getContent();
 
         try{
 
             $data = $serializerInterface->deserialize($json,User::class,"json");
-
-            // Vérification de la validité des données avant de les envoyer en bdd
-            $errors = $validator->validate($data);
-            if (count($errors) > 0) {
-                return $this->json($errors,400);
-            }
+            $this->validateDataWithConstraints($data);
 
             $data->setRoles(["ROLE_USER"]);
-
-            // cryptage du password
-            $user = new User();
-            $password = $data->getPassword(); // password qui doit être crypté
-            $passwordHashed = $encoder->encodePassword($user, $password);
-            $data->setPassword($passwordHashed);
+            $this->encryptDataPassword($data);
 
             $em->persist($data);
             $em->flush();
@@ -109,8 +134,8 @@ class UserController extends AbstractController
      */
     public function sendUserPaymentInformations(Request $request, EntityManagerInterface $em)
     {
-        $dataJson = $request->getContent();
-        $data = json_decode($dataJson);
+        $dataJsonFormat = $request->getContent();
+        $data = json_decode($dataJsonFormat);
 
         $user = $this->getUser();
 
@@ -137,11 +162,9 @@ class UserController extends AbstractController
      * @Route("/api/modify/password", name="user_modify_password", methods={"POST"})
      * Modify actual password
      */
-    public function modifyActualPassword(Request $request)
+    public function modifyActualPassword()
     {
-        $jsonData = $request->getContent();
-        $dataStdClass = json_decode($jsonData);
-        $data = (array) $dataStdClass;
+        $data = $this->transformDataJsonIntoDataArray();
 
         if($data["newPasswordOne"] !== $data["newPasswordTwo"]){
             return $this->json([
@@ -181,11 +204,9 @@ class UserController extends AbstractController
      * @Route("/api/modify/email", name="user_modify_email", methods={"POST"})
      * Modify actual email
      */
-    public function modifyActualEmail(Request $request){
+    public function modifyActualEmail(){
 
-        $dataJson = $request->getContent();
-        $dataStdClass = json_decode($dataJson);
-        $data = (array) $dataStdClass;
+        $data = $this->transformDataJsonIntoDataArray();
 
         // vérification du mdp
         $user = $this->getUser();

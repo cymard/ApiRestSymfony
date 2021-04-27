@@ -5,6 +5,7 @@ namespace App\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 use App\Entity\Product;
+use App\Repository\CartProductRepository;
 
 /**
  * @ORM\Entity(repositoryClass=CartProductRepository::class)

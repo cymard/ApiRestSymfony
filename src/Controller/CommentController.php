@@ -15,6 +15,7 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use App\Repository\CommentRepository;
 
+
 class CommentController extends AbstractController
 {
 
@@ -32,11 +33,13 @@ class CommentController extends AbstractController
             array_unshift($allCommentsJson, $commentJson);
         }
 
-        $response = new Response();
-        $response->setContent(json_encode($allCommentsJson));
-        $response->headers->set('Content-Type', 'application/json');
+        // $response = new Response();
+        // $response->setContent(json_encode($allCommentsJson));
+        // $response->headers->set('Content-Type', 'application/json');
 
-        return $response;
+        // return $response;
+
+
 
     }
 
