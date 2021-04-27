@@ -302,6 +302,7 @@ class ProductController extends AbstractController
 
             $array = $normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
             $allResponses = json_encode(["productsPerPageNumber" => $productsPerPage,"search"=> $search ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "data"=>$array]);
+            
             return $this->sendJsonResponse($allResponses);
         }
     
