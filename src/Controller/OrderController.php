@@ -235,7 +235,7 @@ class OrderController extends AbstractController
      * @Route("/api/orders", name="display_all_user_orders", methods={"GET"})
      * display all orders of a user
      */
-    public function displayUserOrders( NormalizerInterface $normalizerInterface, Request $request, PaginatorInterface $paginator, OrderRepository $orderRepo)
+    public function displayUserOrders( NormalizerInterface $normalizerInterface, Request $request, OrderRepository $orderRepo)
     {
         if($request->query->get('page') && $request->query->get('date') ){
 
