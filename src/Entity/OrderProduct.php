@@ -95,4 +95,14 @@ class OrderProduct
 
         return $this;
     }
+
+    static function fromCartProduct(CartProduct $cartProduct) {
+        $orderProduct = new OrderProduct();
+
+        $orderProduct->setQuantity($cartProduct->getQuantity());
+        $product = $cartProduct->getProduct();
+        $orderProduct->setProduct($product);
+        $orderProduct->setPrice($product->getPrice());
+        return $orderProduct;
+    }
 }

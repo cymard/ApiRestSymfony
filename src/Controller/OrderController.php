@@ -53,54 +53,52 @@ class OrderController extends AbstractController
         return $response;
     }
 
-    /**
-     * Transfer cart_product to order_product
-     */
-    private function transferCartProductToOrderProduct($order, $user){
+    // /**
+    //  * Transfer cart_product to order_product
+    //  */
+    // private function transferCartProductToOrderProduct($order, $user){
 
-        // récupère tous les cart_product correspondant au user
-        $cartProductsCollection = $user->getCartProduct();
-        $cartProductsArray = $cartProductsCollection->toArray();
+    //     // récupère tous les cart_product correspondant au user
+    //     $cartProductsArray = $user->getCartProduct()->toArray();
 
-        foreach($cartProductsArray as $cartProduct){
+    //     foreach($cartProductsArray as $cartProduct){
 
-            // récupère les infos du cartProduct qui nous interèsse
-            $product = $cartProduct->getProduct(); // le product n'a pas toutes les infos
-            $quantity = $cartProduct->getQuantity();
-            $price = $product->getPrice();
+    //         // récupère les infos du cartProduct qui nous interèsse
+    //         $product = $cartProduct->getProduct(); // le product n'a pas toutes les infos
+    //         $quantity = $cartProduct->getQuantity();
+    //         $price = $product->getPrice();
 
-            // baisse du stock
-            $productStock = $product->getStock();
-            $product->setStock($productStock - $quantity);
+    //         // baisse du stock
+    //         $productStock = $product->getStock();
+    //         $product->setStock($productStock - $quantity);
 
-            // instanciation d'un nouvel order
-            $orderProduct = new OrderProduct();
-            $orderProduct->setQuantity($quantity);
-            $orderProduct->setProduct($product);
-            $orderProduct->setPrice($price);
+    //         // instanciation d'un nouvel order
+    //         $orderProduct = new OrderProduct();
+    //         $orderProduct->setQuantity($quantity);
+    //         $orderProduct->setProduct($product);
+    //         $orderProduct->setPrice($price);
 
-            // associer à un order déjà éxistant
-            $orderProduct->setUserOrder($order);
+    //         // associer à un order déjà éxistant
+    //         $orderProduct->setUserOrder($order);
 
-            $this->em->persist($orderProduct);
-            $this->em->flush();
+    //         $this->em->persist($orderProduct);
+    //         $this->em->flush();
 
-            // supprimer tous les cart_products correspondant
-            $user->removeCartProduct($cartProduct);
+    //         // supprimer tous les cart_products correspondant
+    //         $user->removeCartProduct($cartProduct);
 
-            $this->em->remove($cartProduct);
-            $this->em->flush();
-        }
+    //         $this->em->remove($cartProduct);
+    //         $this->em->flush();
+    //     }
    
-    }   
+    // }   
 
-    private function displayOrder ($orderId)
+    private function displayOrderProducts ($orderId)
     {
         $orderArray = $this->orderRepo->findBy(["id" => $orderId]);
         $order = $orderArray[0];
 
-        $orderProductsCollection = $order->getOrderProducts();
-        $orderProducts = $orderProductsCollection->toArray();
+        $orderProducts = $order->getOrderProducts()->toArray();
 
         $allProducts = [];
         
@@ -113,17 +111,6 @@ class OrderController extends AbstractController
         }
 
         return $this->sendNewResponse(json_encode(["data" => $allProducts]));
-    }
-
-    private function displayAnOrder($orderId)
-    {
-        $order = $this->orderRepo->findBy(["id" => $orderId]);
-        $orderArray = (array) $order;
-        $order = $orderArray[0];
-
-        $orderArray = $this->normalizerInterface->normalize($order, "json",["groups" => "order"]);
-
-        return $this->sendNewResponse(json_encode(["orderInformations" => $orderArray]));
     }
 
 
@@ -163,7 +150,6 @@ class OrderController extends AbstractController
         }
     }
 
-
     /**
      * @Route("/api/order", name="create_an_order", methods={"POST"})
      * Create an order
@@ -171,19 +157,44 @@ class OrderController extends AbstractController
     public function createOrder(Request $request,SerializerInterface $serializerInterface,EntityManagerInterface $em)
     {
         $dataJson = $request->getContent();
-        $data = $serializerInterface->deserialize($dataJson, Order::class, "json");
+        $order = $serializerInterface->deserialize($dataJson, Order::class, "json");
 
         // vérification du amount
-        if($data->getAmount() === 0 ){
+        if($order->getAmount() === 0 ){
             $response = new JsonResponse(['message' => "Le montant total ne peut être égal à 0"]);
             return $response;
         }
 
         $user = $this->getUser();
-        $data->setUser($user);
-        $this->transferCartProductToOrderProduct($data, $user);
+        $order->setUser($user);
+        // $this->transferCartProductToOrderProduct($data, $user);
 
-        $em->persist($data);
+        $cartProductsArray = $user->getCartProduct()->toArray();
+
+        foreach($cartProductsArray as $cartProduct){
+
+            $orderProduct = OrderProduct::fromCartProduct($cartProduct);
+            // associer à un order déjà éxistant
+            $orderProduct->setUserOrder($order);
+
+            $product = $orderProduct->getProduct();
+            // baisse du stock
+            $product->takeFromStock($cartProduct->getQuantity());
+
+            $this->em->persist($orderProduct);
+            $this->em->flush();
+
+            // supprimer tous les cart_products correspondant
+            $user->removeCartProduct($cartProduct);
+
+            $this->em->remove($cartProduct);
+            $this->em->flush();
+        }
+
+
+        // $order->save();
+
+        $em->persist($order);
         $em->flush();
 
         if(!empty($dataJson)){
@@ -196,27 +207,40 @@ class OrderController extends AbstractController
      * @Route("/admin/order/{orderId}/cart", name="display_order_products", methods={"GET"})
      * display order products for admin
      */
-    public function displayOrderProducts($orderId)
+    public function displayOrderProductsForAdmin($orderId)
     {
-        return $this->displayOrder($orderId);
+        return $this->displayOrderProducts($orderId);
     }
 
     /**
      * @Route("/api/order/{orderId}/cart", name="user_display_order_products", methods={"GET"})
      * display order products
      */
-    public function userDisplayOrderProducts($orderId)
+    public function displayOrderProductsForUser($orderId)
     {
-        return $this->displayOrder($orderId);
+        $order = $this->orderRepo->findOneBy(["id" => $orderId]);
+        $user = $this->getUser();
+
+        if($user === $order->getUser()){
+            return $this->displayOrderProducts($orderId);
+        }else{
+            return new JsonResponse(["message" => "L'accès à ses informations n'est pas autorisé."], 401);
+        }
     }
+
+
 
     /**
      * @Route("/admin/order/{orderId}", name="admin_display_an_order", methods={"GET"})
      * display an order for admin
      */
-    public function adminDisplayAnOrder ($orderId)
+    public function displayInformationOrderForAdmin ($orderId)
     {
-        return $this->displayAnOrder($orderId);
+        $order = $this->orderRepo->findOneBy(["id" => $orderId]);
+
+        $order = $this->normalizerInterface->normalize($order, "json",["groups" => "order"]);
+
+        return $this->sendNewResponse(json_encode(["orderInformations" => $order]));
     }
 
 
@@ -224,9 +248,20 @@ class OrderController extends AbstractController
      * @Route("/api/order/{orderId}", name="user_display_an_order", methods={"GET"})
      * display an order
      */
-    public function userDisplayAnOrder ($orderId)
+    public function displayInformationOrderForUser ($orderId)
     {
-        return $this->displayAnOrder($orderId);
+        $order = $this->orderRepo->findOneBy(["id" => $orderId]);
+        $user = $this->getUser();
+
+        if($user === $order->getUser()){
+            $order = $this->normalizerInterface->normalize($order, "json",["groups" => "order"]);
+
+            return $this->sendNewResponse(json_encode(["orderInformations" => $order]));
+        }else{
+            return new JsonResponse(["message" => "L'accès à ses informations n'est pas autorisé"], 401);
+        }
+
+        
     }
 
 

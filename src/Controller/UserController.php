@@ -67,6 +67,8 @@ class UserController extends AbstractController
         return $data;
     }
 
+    
+
     /**
      * @Route("/admin/users", name="users", methods={"GET"})
      * Display all accounts
