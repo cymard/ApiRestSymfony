@@ -364,4 +364,27 @@ class User implements UserInterface
 
         return $this;
     }
+
+
+
+    // autres méthodes 
+
+    public function verifyEnteredPassword(string $enteredPassword)
+    {
+        $cryptedPassword = $this->getPassword();
+        $response = password_verify ( $enteredPassword , $cryptedPassword );
+        return $response;
+    }
+
+    public function changeEmailOfAllMyOrders($newEmail)
+    {
+        $userOrders = $this->getOrders()->toArray();
+        foreach($userOrders as &$order){
+            $order->setEmail($newEmail);
+        }
+        unset($order);
+
+        return $userOrders;
+    }
+
 }

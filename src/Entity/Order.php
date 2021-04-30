@@ -327,5 +327,7 @@ class Order
         return $this;
     }
 
+    // Méthodes 
+
    
 }
