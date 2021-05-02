@@ -22,11 +22,17 @@ class ProductController extends AbstractController
 
     private $client;
     private $paginator;
+    private $em;
+    private $normalizerInterface;
+    private $serializerInterface;
 
-    public function __construct(HttpClientInterface $client,PaginatorInterface $paginator)
+    public function __construct(SerializerInterface $serializerInterface, NormalizerInterface $normalizerInterface, EntityManagerInterface $em,HttpClientInterface $client,PaginatorInterface $paginator)
     {
         $this->client = $client;
         $this->paginator = $paginator;
+        $this->em = $em;
+        $this->normalizerInterface = $normalizerInterface;
+        $this->serializerInterface = $serializerInterface;
     }
 
     private function sendNewResponse ($dataSerialized)
@@ -57,62 +63,9 @@ class ProductController extends AbstractController
         return $category;
     }
 
-
-    /**
-     * Averaging of an array
-     */
-    private function arrayAveraging(array $array) 
-    {
-        $rateNumber = count($array);
-        $sum = 0;
-        foreach($array as $number){
-            $sum += $number;
-        }
-        $averaging = $sum/$rateNumber;
-
-        return $averaging;
-    }
-
-    private function sendImageToImgbb($base64)
-    {
-        $response = $this->client->request('POST', 'https://api.imgbb.com/1/upload?expiration=15552000&key=602552f9aeec55ba40e0e73f6ab60d8b', [
-            'body' => [
-                "image" => $base64
-            ]
-        ]);
-
-        $status = $response->getStatusCode();
-    
-        if($status === 200){
-            return $response->getContent();
-        }else{
-            return false;
-        }
-    }
-
-    private function sendImageToImgbbAndReturnHerOnlineUrl ($imageBase64)
-    {
-        $imgbbDataJson = $this->sendImageToImgbb($imageBase64);
-
-        //  Vérification de la réponse de la requête
-        if($imgbbDataJson === false){
-            // response error
-            return $this->json([
-                "status" => 500,
-                "message" => "Impossible d'envoyer de télécharger l'image sur imgbb."
-            ]);
-        }
-
-        // récupération de l'url de l'image
-        $imgbbData = json_decode($imgbbDataJson, true);
-        $imageUrl = $imgbbData["data"]["url"];
-
-        return $imageUrl;
-    }
-
     private function queryPaginator ($query, $page, $productsPerPage)
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
         $articles = $this->paginator->paginate(
             $query, // Requête contenant les données à paginer (ici nos articles)
             $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
@@ -132,33 +85,25 @@ class ProductController extends AbstractController
      * @Route("/product/{id}", name="product_get", methods={"GET"})
      * Display one product
      */
-    public function getProduct (Product $product,  NormalizerInterface $normalizerInterface)
+    public function getProduct (Product $product)
     {
-       
-        // le produit
-        $productInArrayFormat = $normalizerInterface->normalize($product,null,["groups" => "productWithoutComments"]);
-       
-        // les commentaires
-        $commentsInCollectionFormat = $product->getComments();
-        $commentsInObjectFormat = $commentsInCollectionFormat->toArray();
-        $commentsNormalized = []; 
-        
-        // l'ensemble des notes de commentaires du produit sur 5
-        $allRates = [];
+        $productInArrayFormat = $this->normalizerInterface->normalize($product,null,["groups" => "productWithoutComments"]);
+        $productCommentsObject = $product->getComments()->toArray();
+        $productCommentsArray = [];
 
-        foreach ($commentsInObjectFormat as $comment) {
-            array_unshift($allRates, $comment->getNote());
-            $comment = $normalizerInterface->normalize($comment, null , ["groups" => "commentWithoutProduct"]);
-            array_unshift($commentsNormalized, $comment);
+        foreach($productCommentsObject as &$comment){
+            $commentArrayFormat = $this->normalizerInterface->normalize($comment,null,["groups" => "commentWithoutProduct"]);
+            array_unshift($productCommentsArray, $commentArrayFormat);
         }
+        unset($comment);
 
-        // calcul de la moyenne des notes des commentaires
-        if(count($allRates) > 0){
-            $averaging = $this->arrayAveraging($allRates);
-            $rateNumber = count($allRates);
-            $allDataJson = json_encode(["product" => $productInArrayFormat, "comments" => $commentsNormalized, "arrayAveraging" => $averaging, "rateNumber" => $rateNumber]); 
+        $average = $product->calculateAverageRates();
+
+        if($average !== null){
+            $rateNumber = count($product->getComments()->toArray());
+            $allDataJson = json_encode(["product" => $productInArrayFormat, "comments" => $productCommentsArray, "arrayAveraging" => $average, "rateNumber" => $rateNumber]); 
         }else{
-            $allDataJson = json_encode(["product" => $productInArrayFormat, "comments" => $commentsNormalized, "averaging" => 0, "rateNumber" => 0]); 
+            $allDataJson = json_encode(["product" => $productInArrayFormat, "comments" => $productCommentsArray, "averaging" => 0, "rateNumber" => 0]); 
         }
 
         return $this->sendNewResponse($allDataJson);
@@ -169,10 +114,10 @@ class ProductController extends AbstractController
      * @Route("admin/product/{id}", name="product_delete", methods={"DELETE"})
      * Delete a product
      */
-    public function deleteProduct (Product $product,EntityManagerInterface $em)
+    public function deleteProduct (Product $product)
     {
-        $em->remove($product);
-        $em->flush();
+        $this->em->remove($product);
+        $this->em->flush();
 
         $response = new Response("Product deleted");
         return $response;
@@ -183,38 +128,21 @@ class ProductController extends AbstractController
      * @Route("/admin/product/{id}/edit", name="product_put", methods={"PUT"})
      * Modify a product
      */
-    public function setProduct (Product $product, Request $request, SerializerInterface $serializerInterface,EntityManagerInterface $em)
+    public function modifyProduct (Product $actualProduct)
     {
-        $json = $request->getContent();
-        
-        $data = json_decode($json, true);
+        $request = Request::createFromGlobals();
 
-        $newProductData = $serializerInterface->deserialize($json,Product::class,"json",["groups" => "productWithoutComments"]);
-
-        $imageBase64 = $data["image"];
-
-        // appel API vers imgBB pour enregistrer l'image
+        $newInformationsProductObject = $this->serializerInterface->deserialize($request->getContent(),Product::class,"json",["groups" => "productWithoutComments"]);
+        $imageBase64 = $newInformationsProductObject->getImage();
+ 
         if($imageBase64 !== null ){
-            $imageUrl = $this->sendImageToImgbbAndReturnHerOnlineUrl($imageBase64);
-            
-            // récuperer le produit et le modifier
-            $product->setName($newProductData->getName());
-            $product->setPrice($newProductData->getPrice());
-            $product->setDescription($newProductData->getDescription());
-            $product->setImage($imageUrl);
-            $product->setStock($newProductData->getStock());
-
+            $actualProduct->sendImageToImgbbAndReturnUrl($imageBase64);
+            $actualProduct->replaceValuesByAnotherProduct($newInformationsProductObject, true);
         }else{
-            // pas de nouvelle image
-            // récuperer le produit et le modifier
-            $product->setName($newProductData->getName());
-            $product->setPrice($newProductData->getPrice());
-            $product->setDescription($newProductData->getDescription());
-            $product->setStock($newProductData->getStock());
+            $actualProduct->replaceValuesByAnotherProduct($newInformationsProductObject, false);
         }
         
-        $em->persist($product);
-        $em->flush();
+        $this->em->flush($actualProduct);
 
         return $this->json([
             "status" => 201,
@@ -228,30 +156,23 @@ class ProductController extends AbstractController
      * @Route("/admin/products", name="product_post", methods={"POST"})
      * Create a product
      */
-    public function createProduct (Request $request, SerializerInterface $serializerInterface, EntityManagerInterface $em)
+    public function createProduct ()
     {
         try{
-            $json = $request->getContent();
-
-            $data = $serializerInterface->deserialize($json,Product::class,"json");
-            $imageBase64 = $data->getImage();
+            $request = Request::createFromGlobals();
+            $newProductInformations = $this->serializerInterface->deserialize($request->getContent(),Product::class,"json");
+            $imageBase64 = $newProductInformations->getImage();
 
             if($imageBase64 !== null){
-                $imageUrl = $this->sendImageToImgbbAndReturnHerOnlineUrl($imageBase64);
-
-                $data->setImage($imageUrl);
-
-                $em->persist($data);
-                $em->flush();
-
-            }else{
-                $em->persist($data);
-                $em->flush();
-
+                // envoyer l'image dans le serveur d'image
+                $newProductInformations->sendImageToImgbbAndReturnUrl($imageBase64);
             }
 
-            $dataSerialized = $serializerInterface->serialize($data,"json",["groups" => "productWithoutComments"]);
-            return $this->sendNewResponse($dataSerialized);
+            $this->em->persist($newProductInformations);
+            $this->em->flush();
+
+            $newProductInformationsJson = $this->serializerInterface->serialize($newProductInformations,"json",["groups" => "productWithoutComments"]);
+            return $this->sendNewResponse($newProductInformationsJson);
             
             
         }catch(NotEncodableValueException $e){
@@ -267,40 +188,41 @@ class ProductController extends AbstractController
      * @Route("/products", name="product_category", methods={"GET"})
      * Display the products per page from a specific category
      */
-    public function getCategoryProducts (ProductRepository $productRepository,Request $request, NormalizerInterface $normalizerInterface)
+    public function getProductsFromACategory (ProductRepository $productRepository)
     {
-        if( $request->query->get('category') && $request->query->get('page') ){
-            $category = $this->getCategory($request->query->get("category"));
-            $page = (int)$request->query->get("page");
+        $request = Request::createFromGlobals();
+        // $productRepository = $this->getDoctrine()->getRepository(Product::class);
+        $categoryQuery = $request->query->get('category');
+        $pageQuery = (int)$request->query->get('page');
+        $searchQuery = $request->query->get('search');
+        $productsPerPage = 9;
 
-            $data = $productRepository->searchProductWithCategory($category);
-            $query = $data->getQuery();
+        if( $categoryQuery && $pageQuery ){
+            $category = $this->getCategory($categoryQuery);
 
-            $productsPerPage = 9;
-            $allProducts = count($query->getResult());
+            $dataQuery = $productRepository->searchProductWithCategory($category)->getQuery();
+
+            $allProducts = count($dataQuery->getResult());
             $pageNumber = ceil ($allProducts/$productsPerPage);
 
-            $articles = $this->queryPaginator($query, $page, $productsPerPage);
+            $articles = $this->queryPaginator($dataQuery, $pageQuery, $productsPerPage);
 
-            $array = $normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
+            $array = $this->normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
             $allResponses = json_encode(["productsPerPageNumber" => $productsPerPage,"category"=> $category ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "pageContent"=>$array]);
             
             return $this->sendJsonResponse($allResponses);
         
-        }else if($request->query->get('search') && $request->query->get('page')){
-            $search = $request->query->get('search');
-            $page = $request->query->get('page');
+        }else if($searchQuery && $pageQuery){
+            $search = $searchQuery;
 
-            $data = $productRepository->searchProduct($search);
-            $query = $data->getQuery();
+            $dataQuery = $productRepository->searchProduct($search)->getQuery();
 
-            $productsPerPage = 9;
-            $allProducts = count($query->getResult());
+            $allProducts = count($dataQuery->getResult());
             $pageNumber = ceil ($allProducts/$productsPerPage);
 
-            $articles = $this->queryPaginator($query, $page, $productsPerPage);
+            $articles = $this->queryPaginator($dataQuery, $pageQuery, $productsPerPage);
 
-            $array = $normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
+            $array = $this->normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
             $allResponses = json_encode(["productsPerPageNumber" => $productsPerPage,"search"=> $search ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "data"=>$array]);
             
             return $this->sendJsonResponse($allResponses);
