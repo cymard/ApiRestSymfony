@@ -18,6 +18,7 @@ use App\Repository\CommentRepository;
 
 class CommentController extends AbstractController
 {
+    // $request = Request::createFromGlobals();
     private $entityManager;
     private $validator;
 
