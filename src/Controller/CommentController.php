@@ -21,11 +21,17 @@ class CommentController extends AbstractController
     // $request = Request::createFromGlobals();
     private $entityManager;
     private $validator;
+    private $normalizerInterface;
+    private $serializerInterface;
+    private $commentRepository;
 
-    public function __construct(EntityManagerInterface $entityManager, ValidatorInterface $validator)
+    public function __construct(CommentRepository $commentRepository,SerializerInterface $serializerInterface, NormalizerInterface $normalizerInterface, EntityManagerInterface $entityManager, ValidatorInterface $validator)
     {
         $this->entityManager = $entityManager;
         $this->validator = $validator;
+        $this->normalizerInterface = $normalizerInterface;
+        $this->serializerInterface = $serializerInterface;
+        $this->commentRepository = $commentRepository;
     }
 
     private function sendNewResponse ($dataJsonFormat)
@@ -46,12 +52,11 @@ class CommentController extends AbstractController
         return new Response('Les données sont valides.');
     }
 
-    private function setCommentReportingState ($state)
+    private function setCommentReportingState (Comment $comment, $state)
     {
-        $comment = new Comment();
+
         $reportedComment = $comment->setIsReported($state);
-        $this->entityManager->persist($reportedComment);
-        $this->entityManager->flush();
+        $this->entityManager->flush($reportedComment);
 
         if($state === true){
             $response = new JsonResponse(['status' => 200, "message" => "Comment reported"]);
@@ -65,26 +70,21 @@ class CommentController extends AbstractController
 
 
 
-
-
-
-
-
-
+    
 
     /**
      * @Route("/admin/product/{id}/comments", name="product_comments", methods={"GET"})
      */
-    public function getCommentsOfAProduct(Product $product, NormalizerInterface $normalizerInterface){
+    public function getProductComments(Product $product){
 
-        $allCommentsCollection = $product->getComments();
-        $allCommentsArray = $allCommentsCollection->toArray();
+        $allComments = $product->getComments()->toArray();
         $allCommentsJson = [];
 
-        foreach($allCommentsArray as $comment){
-            $commentJson  = $normalizerInterface->normalize($comment, "json",["groups" => "commentWithoutProduct"]);
+        foreach($allComments as &$comment){
+            $commentJson  = $this->normalizerInterface->normalize($comment, "json",["groups" => "commentWithoutProduct"]);
             array_unshift($allCommentsJson, $commentJson);
         }
+        unset($comment);
 
         return $this->sendNewResponse(json_encode($allCommentsJson));
 
@@ -95,70 +95,61 @@ class CommentController extends AbstractController
     /**
      * @Route("/api/product/{id}/comment", name="product_create_comment", methods={"POST"})
      */
-    public function createComment(Product $product, Request $request, SerializerInterface $serializerInterface,EntityManagerInterface  $entityManager) {
-    
-        $data = $request->getContent();
-        $dataObject = $serializerInterface->deserialize($data, Comment::class, "json");
+    public function createComment(Product $product) {
+        $request = Request::createFromGlobals();
+        $commentObject = $this->serializerInterface->deserialize($request->getContent(), Comment::class, "json");
 
         // vérification des données
-        $this->validateDataWithConstraints($dataObject);
+        $this->validateDataWithConstraints($commentObject);
         
         // ajout du commentaire au produit correspondant
-        $product->addComment($dataObject);
+        $product->addComment($commentObject);
 
-        $entityManager->persist($dataObject);
-        $entityManager->flush();
+        $this->entityManager->persist($commentObject);
+        $this->entityManager->flush();
 
-        $newCommentJson = $serializerInterface->serialize($dataObject, "json", ["groups" => "commentWithoutProduct"]);
-        return $this->sendNewResponse($newCommentJson);
+        $commentJson = $this->serializerInterface->serialize($commentObject, "json", ["groups" => "commentWithoutProduct"]);
+        return $this->sendNewResponse($commentJson);
     }
 
     /**
      * @Route("/admin/comment/{id}", name="product_delete_comment", methods={"DELETE"})
      * Delete comment
      */
-    public function deleteComment(Comment $comment, EntityManagerInterface $entityManager)
+    public function deleteComment(Comment $comment)
     {
-        $entityManager->remove($comment);
-        $entityManager->flush();
-
-        $response = new JsonResponse(['status' => 200, "message" => "Comment deleted"]);
-        return $response;
+        $this->entityManager->remove($comment);
+        $this->entityManager->flush();
+        return new JsonResponse(['status' => 200, "message" => "Comment deleted"]);
     }
 
     /**
      * @Route("/api/comment/{id}", name="report_comment", methods={"PUT"})
      * Report comment
      */
-    public function reportComment()
+    public function reportComment(Comment $comment)
     {
-        return $this->setCommentReportingState(true);
+        return $this->setCommentReportingState($comment, true);
     }
 
     /**
      * @Route("/admin/comment/{id}", name="ignore_reported_comment", methods={"PUT"})
      * ignore reported comment
      */
-    public function ignoreReportedComment()
+    public function ignoreReportedComment(Comment $comment)
     {
-        return $this->setCommentReportingState(false);
+        return $this->setCommentReportingState($comment, false);
     }
 
     /**
      * @Route("/admin/comments/reported", name="admin_display_reported_comments", methods={"GET"})
      * Display reported comments
      */
-    public function displayReportedComments (CommentRepository $repo, NormalizerInterface $normalizerInterface) 
+    public function displayReportedComments () 
     {
-        $commentsObject = $repo->findBy(["isReported"=> true]);
-
-        $commentsArray = [];
-
-        foreach ($commentsObject as $comment) {
-            $commentArray = $normalizerInterface->normalize($comment,"json", ["groups" => "commentWithoutProduct"]);
-            array_unshift($commentsArray, $commentArray);
-        }
-        return $this->sendNewResponse(json_encode($commentsArray));
+        $commentsObject = $this->commentRepository->findBy(["isReported"=> true]);
+        $commentsJson = $this->serializerInterface->serialize($commentsObject,"json", ["groups" => "commentWithoutProduct"]);
+        return $this->sendNewResponse($commentsJson);
     }
 
 }
