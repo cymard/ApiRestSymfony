@@ -96,7 +96,7 @@ class OrderProduct
         return $this;
     }
 
-    static function fromCartProduct(CartProduct $cartProduct) {
+    static function createOrderProductfromCartProduct(CartProduct $cartProduct) {
         $orderProduct = new OrderProduct();
 
         $orderProduct->setQuantity($cartProduct->getQuantity());

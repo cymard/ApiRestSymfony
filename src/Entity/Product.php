@@ -173,12 +173,6 @@ class Product
         return $this;
     }
 
-    public function takeFromStock(int $quantity): self
-    {
-        $this->stock -= $quantity;
-
-        return $this;
-    }
 
     /**
      * @return Collection|Comment[]
@@ -296,6 +290,13 @@ class Product
             return null;
         }
 
+    }
+
+    public function takeFromStock(int $quantity): self
+    {
+        $this->stock -= $quantity;
+
+        return $this;
     }
 
 

@@ -19,40 +19,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 class OrderController extends AbstractController
 {
 
-    private $em;
-    private $paginator;
-    private $normalizerInterface;
-    private $orderRepo;
-
-    public function __construct(EntityManagerInterface $em, PaginatorInterface $paginator ,NormalizerInterface $normalizerInterface, OrderRepository $orderRepo)
-    {
-        $this->em = $em;
-        $this->paginator = $paginator;
-        $this->normalizerInterface = $normalizerInterface;
-        $this->orderRepo = $orderRepo;
-    }
-
-    private function queryPaginator ($query, $page, $orderPerPage)
-    {
-        $request = new Request();
-        $articles = $this->paginator->paginate(
-            $query, // Requête contenant les données à paginer (ici nos articles)
-            $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
-            $orderPerPage // Nombre de résultats par page
-        );
-
-        return $articles;
-    }
-
-    private function sendNewResponse ($dataJsonFormat)
-    {
-        $response = new Response();
-        $response->setContent($dataJsonFormat);
-        $response->headers->set('Content-Type', 'application/json');
-        
-        return $response;
-    }
-
     // /**
     //  * Transfer cart_product to order_product
     //  */
@@ -93,23 +59,58 @@ class OrderController extends AbstractController
    
     // }   
 
-    private function displayOrderProducts ($orderId)
-    {
-        $orderArray = $this->orderRepo->findBy(["id" => $orderId]);
-        $order = $orderArray[0];
+    private $em;
+    private $paginator;
+    private $normalizerInterface;
+    private $serializerInterface;
+    private $orderRepo;
 
+    public function __construct(SerializerInterface $serializerInterface, EntityManagerInterface $em, PaginatorInterface $paginator ,NormalizerInterface $normalizerInterface, OrderRepository $orderRepo)
+    {
+        $this->em = $em;
+        $this->paginator = $paginator;
+        $this->normalizerInterface = $normalizerInterface;
+        $this->orderRepo = $orderRepo;
+        $this->serializerInterface = $serializerInterface;
+    }
+
+    private function queryPaginator ($query, $page, $orderPerPage)
+    {
+        $request = Request::createFromGlobals();
+        $articles = $this->paginator->paginate(
+            $query, // Requête contenant les données à paginer (ici nos articles)
+            $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
+            $orderPerPage // Nombre de résultats par page
+        );
+
+        return $articles;
+    }
+
+    private function sendNewResponse ($dataJsonFormat)
+    {
+        $response = new Response();
+        $response->setContent($dataJsonFormat);
+        $response->headers->set('Content-Type', 'application/json');
+        
+        return $response;
+    }
+
+
+    private function getOrderProductsAndQuantity ($orderId)
+    {
+        $order = $this->orderRepo->findBy(["id" => $orderId])[0];
         $orderProducts = $order->getOrderProducts()->toArray();
 
         $allProducts = [];
         
-        foreach($orderProducts as $orderProduct){
+        foreach($orderProducts as &$orderProduct){
             $quantity = $orderProduct->getQuantity();
-            $product = $orderProduct->getProduct();
-            $productNormalized = $this->normalizerInterface->normalize($product, null , ["groups" => "productWithoutComments"]);
-            $productInformations = ["product" => $productNormalized, "quantity" => $quantity];
+            $product = $this->normalizerInterface->normalize($orderProduct->getProduct(), null , ["groups" => "productWithoutComments"]);
+            $productInformations = ["product" => $product, "quantity" => $quantity];
             array_push($allProducts, $productInformations);
         }
 
+        unset($orderProduct);
         return $this->sendNewResponse(json_encode(["data" => $allProducts]));
     }
 
@@ -122,84 +123,80 @@ class OrderController extends AbstractController
      * @Route("/admin/orders", name="all_orders", methods={"GET"})
      * Display orders
      */
-    public function displayOrders(OrderRepository $repo, NormalizerInterface $normalizerInterface, Request $request ) 
+    public function displayOrders() 
     {
-        if($request->query->get('page') && $request->query->get('search')){
-            $page = (int)$request->query->get('page');
-            $search = $request->query->get('search');
+        $request = Request::createFromGlobals();
+        $pageQuery = (int)$request->query->get('page');
+        $searchQuery = $request->query->get('search');
 
+        if($pageQuery && $searchQuery){
             $ordersPerPage = 9;
 
-            if($search === "default"){
-               $queryBuilder =  $repo->findAllOrders();
+            if($searchQuery === "default"){
+               $queryBuilder =  $this->orderRepo->findAllOrders();
             }else{
-                $queryBuilder = $repo->findOrderBySearchingEmail($search);
+                $queryBuilder = $this->orderRepo->findOrderBySearchingEmail($searchQuery);
             }
 
             $allOrders = count($queryBuilder->getQuery()->getResult());
-            $pageNumber = ceil ($allOrders/$ordersPerPage);
-            $orders = $this->queryPaginator($queryBuilder->getQuery(), $page, $ordersPerPage);
+            $numberOfPages = ceil ($allOrders/$ordersPerPage);
+            $paginatedOrders = $this->queryPaginator($queryBuilder->getQuery(), $pageQuery, $ordersPerPage);
+            $paginatedOrders = $this->normalizerInterface->normalize($paginatedOrders,null,["groups" => "order"]);
 
-            // conversion des objets en tableaux
-            $ordersArray = $normalizerInterface->normalize($orders,null,["groups" => "order"]);
-
-            return $this->sendNewResponse(json_encode(["ordersPerPage" => $ordersPerPage ,"allOrdersNumber" => $allOrders, "totalPageNumber"=>$pageNumber, "pageContent"=>$ordersArray]));
+            return $this->sendNewResponse(json_encode(["ordersPerPage" => $ordersPerPage ,"allOrdersNumber" => $allOrders, "totalPageNumber"=>$numberOfPages, "pageContent"=>$paginatedOrders]));
         }else{
-            $response = new JsonResponse(['message' => "pas de query param 'page' ou 'search'."]);
-            return $response;
+            return new JsonResponse(['message' => "pas de query param 'page' ou 'search'."]);
         }
     }
+
 
     /**
      * @Route("/api/order", name="create_an_order", methods={"POST"})
      * Create an order
      */
-    public function createOrder(Request $request,SerializerInterface $serializerInterface,EntityManagerInterface $em)
+    public function createOrder()
     {
-        $dataJson = $request->getContent();
-        $order = $serializerInterface->deserialize($dataJson, Order::class, "json");
+        $request = Request::createFromGlobals();
+
+        if(empty($request->getContent())){
+            return $this->sendNewResponse(json_encode(["message" => "Aucun data encoyé"]));
+        }
+
+        $newOrder = $this->serializerInterface->deserialize($request->getContent(), Order::class, "json");
 
         // vérification du amount
-        if($order->getAmount() === 0 ){
-            $response = new JsonResponse(['message' => "Le montant total ne peut être égal à 0"]);
-            return $response;
+        if($newOrder->getAmount() === 0 ){
+            return new JsonResponse(['message' => "Le montant total ne peut être égal à 0"]);
         }
 
         $user = $this->getUser();
-        $order->setUser($user);
-        // $this->transferCartProductToOrderProduct($data, $user);
+        $newOrder->setUser($user);
 
-        $cartProductsArray = $user->getCartProduct()->toArray();
+        $cartProducts = $user->getCartProduct()->toArray();
 
-        foreach($cartProductsArray as $cartProduct){
+        foreach($cartProducts as $cartProduct){
 
-            $orderProduct = OrderProduct::fromCartProduct($cartProduct);
-            // associer à un order déjà éxistant
-            $orderProduct->setUserOrder($order);
+            $orderProduct = OrderProduct::createOrderProductfromCartProduct($cartProduct);
+            $orderProduct->setUserOrder($newOrder);
 
-            $product = $orderProduct->getProduct();
             // baisse du stock
+            $product = $orderProduct->getProduct();
             $product->takeFromStock($cartProduct->getQuantity());
 
             $this->em->persist($orderProduct);
             $this->em->flush();
 
-            // supprimer tous les cart_products correspondant
+            // supprimer le cart_product correspondant
             $user->removeCartProduct($cartProduct);
 
             $this->em->remove($cartProduct);
             $this->em->flush();
         }
 
+        $this->em->persist($newOrder);
+        $this->em->flush();
 
-        // $order->save();
-
-        $em->persist($order);
-        $em->flush();
-
-        if(!empty($dataJson)){
-            return $this->sendNewResponse($dataJson);
-        }
+        return $this->sendNewResponse(json_encode(["message" => "nouvelle commande crée"]));
     }
 
 
@@ -207,24 +204,24 @@ class OrderController extends AbstractController
      * @Route("/admin/order/{orderId}/cart", name="display_order_products", methods={"GET"})
      * display order products for admin
      */
-    public function displayOrderProductsForAdmin($orderId)
+    public function displayOneDetailedOrderForAdmin($orderId)
     {
-        return $this->displayOrderProducts($orderId);
+        return $this->getOrderProductsAndQuantity($orderId);
     }
 
     /**
      * @Route("/api/order/{orderId}/cart", name="user_display_order_products", methods={"GET"})
      * display order products
      */
-    public function displayOrderProductsForUser($orderId)
+    public function displayOneDetailedOrderForUser($orderId)
     {
         $order = $this->orderRepo->findOneBy(["id" => $orderId]);
         $user = $this->getUser();
 
         if($user === $order->getUser()){
-            return $this->displayOrderProducts($orderId);
+            return $this->getOrderProductsAndQuantity($orderId);
         }else{
-            return new JsonResponse(["message" => "L'accès à ses informations n'est pas autorisé."], 401);
+            return new JsonResponse(["message" => "L'accès à ces informations n'est pas autorisée."], 401);
         }
     }
 
@@ -270,34 +267,32 @@ class OrderController extends AbstractController
      * @Route("/api/orders", name="display_all_user_orders", methods={"GET"})
      * display all orders of a user
      */
-    public function displayUserOrders( NormalizerInterface $normalizerInterface, Request $request, OrderRepository $orderRepo)
-    {
-        if($request->query->get('page') && $request->query->get('date') ){
+    public function displayUserOrders()
+    { 
+        $request = Request::createFromGlobals();
+        $pageQuery = $request->query->get('page');
+        $dateQuery = $request->query->get('date');
 
-            $page = $request->query->get('page');
-            $date = $request->query->get('date');
+        if($pageQuery && $dateQuery ){
 
             $user = $this->getUser();
             $userEmail = $user->getEmail();
-            $ordersCollection = $user->getOrders();
-            $ordersArray = $ordersCollection->toArray();
+            // $ordersArray = $user->getOrders()->toArray();
             $ordersPerPage = 9;
 
 
-            $data = $orderRepo->findAllOrdersByDate($userEmail, $date);
+            $dataQueryBuilder = $this->orderRepo->findAllOrdersByDate($userEmail, $dateQuery);
 
-            $allOrders = count($data->getQuery()->getResult());
+            $allOrders = count($dataQueryBuilder->getQuery()->getResult());
             $pageNumber = ceil($allOrders/9);
+            $paginatedOrders = $this->queryPaginator($dataQueryBuilder->getQuery(), $pageQuery, $ordersPerPage);
 
-            $orders = $this->queryPaginator($data->getQuery(), $page, $ordersPerPage);
-
-            $ordersArray = $normalizerInterface->normalize($orders,null,["groups" => "order"]);
+            $ordersArray = $this->normalizerInterface->normalize($paginatedOrders,null,["groups" => "order"]);
 
             return $this->sendNewResponse(json_encode(["ordersPerPage" => $ordersPerPage ,"allOrdersNumber" => $allOrders, "totalPageNumber"=>$pageNumber, "pageContent"=>$ordersArray]));
     
         }else{
-            $response = new JsonResponse(['message' => "error"]);
-            return $response;
+            return new JsonResponse(['message' => "error"]);
         }
         
     }
@@ -306,14 +301,15 @@ class OrderController extends AbstractController
      * @Route("/api/user/order", name="user_order_number", methods={"GET"})
      * Display User orders number
      */
-    public function userOrderNumber()
+    public function getOrdersQuantityOfOneUser()
     {
-        $user = $this->getUser();
-        $orderCollection = $user->getOrders();
-        $orderArray = $orderCollection->toArray();
-        $orderNumber = count($orderArray);
+        // $user = $this->getUser();
+        // $orders = $user->getOrders()->toArray();
+        // $ordersNumber = count($orders);
 
-        return $this->sendNewResponse(json_encode(['orderNumber' => $orderNumber]));
+        $ordersNumber = $this->getUser()->getOrdersQuantity();
+
+        return $this->sendNewResponse(json_encode(['orderNumber' => $ordersNumber]));
     }
 
 }

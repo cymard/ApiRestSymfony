@@ -387,4 +387,9 @@ class User implements UserInterface
         return $userOrders;
     }
 
+    public function getOrdersQuantity(){
+        $orders = $this->getOrders()->toArray();
+        return count($orders);
+    }
+
 }
