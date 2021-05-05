@@ -45,7 +45,6 @@ class UserController extends AbstractController
         if (count($errors) > 0) {
             return $this->json($errors,400);
         }
-        return new Response('Les données sont valides.');
     }
 
     private function encryptDataPassword ($data)
@@ -58,9 +57,8 @@ class UserController extends AbstractController
         return $data;
     }
 
-    private function transformDataJsonIntoDataArray()
+    private function transformDataJsonIntoDataArray(Request $request)
     {
-        $request = new Request();
         $dataJson = $request->getContent();
         $dataStdClass = json_decode($dataJson);
         $data = (array) $dataStdClass;
@@ -152,9 +150,9 @@ class UserController extends AbstractController
      * @Route("/api/modify/password", name="user_modify_password", methods={"PUT"})
      * Modify actual password
      */
-    public function modifyActualPassword()
+    public function modifyActualPassword(Request $request)
     {
-        $data = $this->transformDataJsonIntoDataArray();
+        $data = $this->transformDataJsonIntoDataArray($request);
 
         $oldPassword = $data["oldPassword"];
         $newPassword = $data["newPasswordOne"];
@@ -182,13 +180,14 @@ class UserController extends AbstractController
         ],200);
     }
 
+
     /**
      * @Route("/api/modify/email", name="user_modify_email", methods={"PUT"})
      * Modify actual email
      */
-    public function modifyActualEmail(){
+    public function modifyActualEmail(Request $request){
 
-        $data = $this->transformDataJsonIntoDataArray();
+        $data = $this->transformDataJsonIntoDataArray($request);
         $user = $this->getUser();
 
         if($user->verifyEnteredPassword($data["password"]) !== true){

@@ -18,7 +18,6 @@ use App\Repository\CommentRepository;
 
 class CommentController extends AbstractController
 {
-    // $request = Request::createFromGlobals();
     private $entityManager;
     private $validator;
     private $normalizerInterface;
@@ -80,11 +79,10 @@ class CommentController extends AbstractController
         $allComments = $product->getComments()->toArray();
         $allCommentsJson = [];
 
-        foreach($allComments as &$comment){
+        foreach($allComments as $comment){
             $commentJson  = $this->normalizerInterface->normalize($comment, "json",["groups" => "commentWithoutProduct"]);
             array_unshift($allCommentsJson, $commentJson);
         }
-        unset($comment);
 
         return $this->sendNewResponse(json_encode($allCommentsJson));
 
@@ -95,8 +93,8 @@ class CommentController extends AbstractController
     /**
      * @Route("/api/product/{id}/comment", name="product_create_comment", methods={"POST"})
      */
-    public function createComment(Product $product) {
-        $request = Request::createFromGlobals();
+    public function createComment(Product $product,Request $request) {
+
         $commentObject = $this->serializerInterface->deserialize($request->getContent(), Comment::class, "json");
 
         // vérification des données

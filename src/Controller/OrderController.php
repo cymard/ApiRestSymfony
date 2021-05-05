@@ -74,9 +74,8 @@ class OrderController extends AbstractController
         $this->serializerInterface = $serializerInterface;
     }
 
-    private function queryPaginator ($query, $page, $orderPerPage)
+    private function queryPaginator (Request $request, $query, $page, $orderPerPage)
     {
-        $request = Request::createFromGlobals();
         $articles = $this->paginator->paginate(
             $query, // Requête contenant les données à paginer (ici nos articles)
             $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
@@ -98,19 +97,17 @@ class OrderController extends AbstractController
 
     private function getOrderProductsAndQuantity ($orderId)
     {
-        $order = $this->orderRepo->findBy(["id" => $orderId])[0];
+        $order = $this->orderRepo->findOneBy(["id" => $orderId]);
         $orderProducts = $order->getOrderProducts()->toArray();
 
         $allProducts = [];
         
-        foreach($orderProducts as &$orderProduct){
+        foreach($orderProducts as $orderProduct){
             $quantity = $orderProduct->getQuantity();
             $product = $this->normalizerInterface->normalize($orderProduct->getProduct(), null , ["groups" => "productWithoutComments"]);
             $productInformations = ["product" => $product, "quantity" => $quantity];
             array_push($allProducts, $productInformations);
         }
-
-        unset($orderProduct);
         return $this->sendNewResponse(json_encode(["data" => $allProducts]));
     }
 
@@ -123,9 +120,8 @@ class OrderController extends AbstractController
      * @Route("/admin/orders", name="all_orders", methods={"GET"})
      * Display orders
      */
-    public function displayOrders() 
+    public function displayOrders(Request $request) 
     {
-        $request = Request::createFromGlobals();
         $pageQuery = (int)$request->query->get('page');
         $searchQuery = $request->query->get('search');
 
@@ -140,7 +136,7 @@ class OrderController extends AbstractController
 
             $allOrders = count($queryBuilder->getQuery()->getResult());
             $numberOfPages = ceil ($allOrders/$ordersPerPage);
-            $paginatedOrders = $this->queryPaginator($queryBuilder->getQuery(), $pageQuery, $ordersPerPage);
+            $paginatedOrders = $this->queryPaginator($request, $queryBuilder->getQuery(), $pageQuery, $ordersPerPage);
             $paginatedOrders = $this->normalizerInterface->normalize($paginatedOrders,null,["groups" => "order"]);
 
             return $this->sendNewResponse(json_encode(["ordersPerPage" => $ordersPerPage ,"allOrdersNumber" => $allOrders, "totalPageNumber"=>$numberOfPages, "pageContent"=>$paginatedOrders]));
@@ -154,12 +150,11 @@ class OrderController extends AbstractController
      * @Route("/api/order", name="create_an_order", methods={"POST"})
      * Create an order
      */
-    public function createOrder()
+    public function createOrder(Request $request)
     {
-        $request = Request::createFromGlobals();
 
         if(empty($request->getContent())){
-            return $this->sendNewResponse(json_encode(["message" => "Aucun data encoyé"]));
+            return $this->sendNewResponse(json_encode(["message" => "Aucun data envoyé"]));
         }
 
         $newOrder = $this->serializerInterface->deserialize($request->getContent(), Order::class, "json");
@@ -257,8 +252,6 @@ class OrderController extends AbstractController
         }else{
             return new JsonResponse(["message" => "L'accès à ses informations n'est pas autorisé"], 401);
         }
-
-        
     }
 
 
@@ -267,9 +260,8 @@ class OrderController extends AbstractController
      * @Route("/api/orders", name="display_all_user_orders", methods={"GET"})
      * display all orders of a user
      */
-    public function displayUserOrders()
+    public function displayUserOrders(Request $request)
     { 
-        $request = Request::createFromGlobals();
         $pageQuery = $request->query->get('page');
         $dateQuery = $request->query->get('date');
 
@@ -285,7 +277,7 @@ class OrderController extends AbstractController
 
             $allOrders = count($dataQueryBuilder->getQuery()->getResult());
             $pageNumber = ceil($allOrders/9);
-            $paginatedOrders = $this->queryPaginator($dataQueryBuilder->getQuery(), $pageQuery, $ordersPerPage);
+            $paginatedOrders = $this->queryPaginator($request, $dataQueryBuilder->getQuery(), $pageQuery, $ordersPerPage);
 
             $ordersArray = $this->normalizerInterface->normalize($paginatedOrders,null,["groups" => "order"]);
 
@@ -303,10 +295,6 @@ class OrderController extends AbstractController
      */
     public function getOrdersQuantityOfOneUser()
     {
-        // $user = $this->getUser();
-        // $orders = $user->getOrders()->toArray();
-        // $ordersNumber = count($orders);
-
         $ordersNumber = $this->getUser()->getOrdersQuantity();
 
         return $this->sendNewResponse(json_encode(['orderNumber' => $ordersNumber]));

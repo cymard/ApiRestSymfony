@@ -32,11 +32,10 @@ class ContactController extends AbstractController
         // récuperer les emails de tous les admins
         $admins = $this->userAdminRepository->findAll();
         $adminEmails = [];
-        foreach ($admins as &$admin){
+        foreach ($admins as $admin){
             $email = $admin->getEmail();
             array_push($adminEmails, $email);
         }
-        unset($admin);
 
         return $adminEmails;
     }
@@ -62,9 +61,8 @@ class ContactController extends AbstractController
     /**
      * @Route("/contact", name="contact")
      */
-    public function index()
+    public function index(Request $request)
     {
-        $request = Request::createFromGlobals();
         $newContact = new Contact();
         $form = $this->createForm(ContactType::class, $newContact);
         $form->handleRequest($request);

@@ -63,9 +63,8 @@ class ProductController extends AbstractController
         return $category;
     }
 
-    private function queryPaginator ($query, $page, $productsPerPage)
+    private function queryPaginator (Request $request, $query, $page, $productsPerPage)
     {
-        $request = Request::createFromGlobals();
         $articles = $this->paginator->paginate(
             $query, // Requête contenant les données à paginer (ici nos articles)
             $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
@@ -91,11 +90,10 @@ class ProductController extends AbstractController
         $productCommentsObject = $product->getComments()->toArray();
         $productCommentsArray = [];
 
-        foreach($productCommentsObject as &$comment){
+        foreach($productCommentsObject as $comment){
             $commentArrayFormat = $this->normalizerInterface->normalize($comment,null,["groups" => "commentWithoutProduct"]);
             array_unshift($productCommentsArray, $commentArrayFormat);
         }
-        unset($comment);
 
         $average = $product->calculateAverageRates();
 
@@ -128,9 +126,8 @@ class ProductController extends AbstractController
      * @Route("/admin/product/{id}/edit", name="product_put", methods={"PUT"})
      * Modify a product
      */
-    public function modifyProduct (Product $actualProduct)
+    public function modifyProduct (Product $actualProduct ,Request $request)
     {
-        $request = Request::createFromGlobals();
 
         $newInformationsProductObject = $this->serializerInterface->deserialize($request->getContent(),Product::class,"json",["groups" => "productWithoutComments"]);
         $imageBase64 = $newInformationsProductObject->getImage();
@@ -145,7 +142,7 @@ class ProductController extends AbstractController
         $this->em->flush($actualProduct);
 
         return $this->json([
-            "status" => 201,
+            "status" => 200,
             "message" => "Produit modifié"
         ]);
 
@@ -156,10 +153,9 @@ class ProductController extends AbstractController
      * @Route("/admin/products", name="product_post", methods={"POST"})
      * Create a product
      */
-    public function createProduct ()
+    public function createProduct (Request $request)
     {
         try{
-            $request = Request::createFromGlobals();
             $newProductInformations = $this->serializerInterface->deserialize($request->getContent(),Product::class,"json");
             $imageBase64 = $newProductInformations->getImage();
 
@@ -188,9 +184,8 @@ class ProductController extends AbstractController
      * @Route("/products", name="product_category", methods={"GET"})
      * Display the products per page from a specific category
      */
-    public function getProductsFromACategory (ProductRepository $productRepository)
+    public function getProductsFromACategory (ProductRepository $productRepository, Request $request)
     {
-        $request = Request::createFromGlobals();
         // $productRepository = $this->getDoctrine()->getRepository(Product::class);
         $categoryQuery = $request->query->get('category');
         $pageQuery = (int)$request->query->get('page');
@@ -205,7 +200,7 @@ class ProductController extends AbstractController
             $allProducts = count($dataQuery->getResult());
             $pageNumber = ceil ($allProducts/$productsPerPage);
 
-            $articles = $this->queryPaginator($dataQuery, $pageQuery, $productsPerPage);
+            $articles = $this->queryPaginator($request, $dataQuery, $pageQuery, $productsPerPage);
 
             $array = $this->normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
             $allResponses = json_encode(["productsPerPageNumber" => $productsPerPage,"category"=> $category ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "pageContent"=>$array]);
@@ -220,7 +215,7 @@ class ProductController extends AbstractController
             $allProducts = count($dataQuery->getResult());
             $pageNumber = ceil ($allProducts/$productsPerPage);
 
-            $articles = $this->queryPaginator($dataQuery, $pageQuery, $productsPerPage);
+            $articles = $this->queryPaginator($request, $dataQuery, $pageQuery, $productsPerPage);
 
             $array = $this->normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
             $allResponses = json_encode(["productsPerPageNumber" => $productsPerPage,"search"=> $search ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "data"=>$array]);
