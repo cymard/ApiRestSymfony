@@ -246,8 +246,7 @@ class Product
             $allRates = [];
             $sum = 0;
     
-            foreach($comments as &$comment){
-                // dd($comment->getNote());
+            foreach($comments as $comment){
                 array_unshift($allRates, $comment->getNote());
                 $sum += intval($comment->getNote());
             }

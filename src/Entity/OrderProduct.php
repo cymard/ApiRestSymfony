@@ -6,7 +6,6 @@ use Symfony\Component\Validator\Constraints as Assert;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\OrderProductRepository;
 
-
 /**
  * @ORM\Entity(repositoryClass=OrderProductRepository::class)
  */
@@ -29,7 +28,7 @@ class OrderProduct
      * @ORM\ManyToOne(targetEntity=Order::class, inversedBy="orderProducts", cascade={"persist", "remove"})
      * @ORM\JoinColumn(nullable=false)
      */
-    private $userOrder;
+    private $order;
 
     /**
      * @ORM\ManyToOne(targetEntity=Product::class, cascade={"persist", "remove"})
@@ -60,14 +59,14 @@ class OrderProduct
         return $this;
     }
 
-    public function getUserOrder(): ?Order
+    public function getOrder(): ?Order
     {
-        return $this->userOrder;
+        return $this->order;
     }
 
-    public function setUserOrder(?Order $userOrder): self
+    public function setOrder(?Order $order): self
     {
-        $this->userOrder = $userOrder;
+        $this->order = $order;
 
         return $this;
     }

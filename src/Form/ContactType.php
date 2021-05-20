@@ -6,7 +6,6 @@ use App\Entity\Contact;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
-use Symfony\Component\Mime\Email;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
@@ -32,21 +31,6 @@ class ContactType extends AbstractType
         return $form;
     }
 
-    static function createEmail (array $emailAdmins, $data)
-    {
-        $email = (new Email())
-        ->from('site22web22@gmail.com')
-        ->to(...$emailAdmins)
-        ->subject($data->getFirstName().' vous a contacté')
-        ->html('
-            <p>Prénom: '.$data->getFirstName().'</p>
-            <p>Nom: '.$data->getLastName().'</p>
-            <p>Email: '.$data->getEmail().'</p>
-            <p>Message: '.$data->getMessage().'</p>
-        ');
-
-        return $email;
-    }
 
     public function configureOptions(OptionsResolver $resolver)
     {

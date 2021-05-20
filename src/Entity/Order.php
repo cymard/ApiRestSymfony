@@ -109,7 +109,7 @@ class Order
     private $amount;
 
     /**
-     * @ORM\OneToMany(targetEntity=OrderProduct::class, mappedBy="userOrder")
+     * @ORM\OneToMany(targetEntity=OrderProduct::class, mappedBy="order")
      */
     private $orderProducts;
 
@@ -284,7 +284,7 @@ class Order
     {
         if (!$this->orderProducts->contains($orderProduct)) {
             $this->orderProducts[] = $orderProduct;
-            $orderProduct->setUserOrder($this);
+            $orderProduct->setOrder($this);
         }
 
         return $this;
@@ -293,8 +293,8 @@ class Order
     public function removeOrderProduct(OrderProduct $orderProduct): self
     {
         if ($this->orderProducts->removeElement($orderProduct)) {
-            if ($orderProduct->getUserOrder() === $this) {
-                $orderProduct->setUserOrder(null);
+            if ($orderProduct->getOrder() === $this) {
+                $orderProduct->setOrder(null);
             }
         }
 
