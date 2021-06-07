@@ -81,13 +81,14 @@ class OrderController extends AbstractController
      */
     public function displayOrders(Request $request) 
     {
-        $pageQuery = (int)$request->query->get('page');
         $searchQuery = $request->query->get('search');
+        $pageQuery = (int)$request->query->get('page');
 
-        if($pageQuery && $searchQuery){
+        if($pageQuery
+        ){
             $ordersPerPage = 9;
 
-            if($searchQuery === "default"){
+            if($searchQuery === ""){
                $queryBuilder =  $this->orderRepo->findAllOrders();
             }else{
                 $queryBuilder = $this->orderRepo->findOrderBySearchingEmail($searchQuery);
@@ -212,6 +213,27 @@ class OrderController extends AbstractController
         ]);
     }
 
+    /**
+     * @Route("/admin/order", name="order_delete", methods={"DELETE"})
+     * Delete orders
+     */
+    public function deleteOrder (Request $request)
+    {
+        $ordersToDelete = (array)json_decode($request->getContent());
+        $ordersToDelete = $ordersToDelete["selectedOrders"];
+
+        foreach($ordersToDelete as $id){
+            $order = $this->orderRepo->find($id);
+
+            $this->em->remove($order);
+            $this->em->flush();
+        }
+
+        return $this->sendJsonResponse([
+            "message" => "Commande(s) supprimée(s)"    
+        ]);
+    }
+
 
     /**
      * @Route("/api/order/{orderId}", name="user_display_an_order", methods={"GET"})
@@ -289,6 +311,8 @@ class OrderController extends AbstractController
             'orderNumber' => $ordersNumber
         ]);
     }
+
+
 
 }
 

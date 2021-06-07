@@ -75,7 +75,7 @@ class AdminController extends AbstractController
         if($searchQuery && $categoryQuery && $pageQuery && $sortingQuery){
 
             // faire la recherche
-            $queryBuilder = $this->productRepository->searchProductAdmin($searchQuery,$categoryQuery, $sortingQuery);
+            $queryBuilder = $this->productRepository->searchProductAdmin($searchQuery, $categoryQuery, $sortingQuery);
             $query = $queryBuilder->getQuery();
          
             $allProducts = count($query->getResult());

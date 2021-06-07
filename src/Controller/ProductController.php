@@ -105,7 +105,7 @@ class ProductController extends AbstractController
 
 
     /**
-     * @Route("admin/product/{id}", name="product_delete", methods={"DELETE"})
+     * @Route("/admin/product/{id}", name="product_delete", methods={"DELETE"})
      * Delete a product
      */
     public function deleteProduct (Product $product)
@@ -219,8 +219,15 @@ class ProductController extends AbstractController
             $articles = $this->queryPaginator($request, $dataQuery, $pageQuery, $productsPerPage);
 
             $array = $this->normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
-            $allResponses = ["productsPerPageNumber" => $productsPerPage,"category"=> $category ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "pageContent"=>$array];
-            
+            // $allResponses = ["productsPerPageNumber" => $productsPerPage,"category"=> $category ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "pageContent"=>$array];
+            $allResponses = [
+                "productsPerPageNumber" => $productsPerPage,
+                "category"=> $category ,
+                "allProductsNumber" => $allProducts, 
+                "totalPageNumber"=>$pageNumber, 
+                "content"=>$array
+            ];
+
             return $this->sendJsonResponse($allResponses);
         
         }else if($searchQuery && $pageQuery){
@@ -234,7 +241,14 @@ class ProductController extends AbstractController
             $articles = $this->queryPaginator($request, $dataQuery, $pageQuery, $productsPerPage);
 
             $array = $this->normalizerInterface->normalize($articles,null,["groups" => "productWithoutComments"]);
-            $allResponses = ["productsPerPageNumber" => $productsPerPage,"search"=> $search ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "data"=>$array];
+            // $allResponses = ["productsPerPageNumber" => $productsPerPage,"search"=> $search ,"allProductsNumber" => $allProducts, "totalPageNumber"=>$pageNumber, "data"=>$array];
+            $allResponses = [
+                "productsPerPageNumber" => $productsPerPage,
+                "search"=> $search,
+                "allProductsNumber" => $allProducts,
+                "totalPageNumber"=>$pageNumber,
+                "content"=>$array
+            ];
             
             return $this->sendJsonResponse($allResponses);
         }

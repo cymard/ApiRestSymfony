@@ -309,7 +309,6 @@ class Order
     public function setUser(?User $user): self
     {
         $this->user = $user;
-
         return $this;
     }
 
@@ -326,8 +325,4 @@ class Order
 
         return $this;
     }
-
-    // Méthodes 
-
-   
 }
