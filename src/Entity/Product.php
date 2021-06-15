@@ -2,19 +2,21 @@
 
 namespace App\Entity;
 
-use App\Repository\ProductRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\HttpFoundation\File\File;
-use Symfony\Component\Validator\Constraints as Assert;
+use App\Repository\ProductRepository;
+use Doctrine\Common\Collections\Collection;
+use Symfony\Component\HttpClient\HttpClient;
+use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints\Length;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * @ORM\Entity(repositoryClass=ProductRepository::class)
  */
 class Product
 {
+
     /**
      * @ORM\Id
      * @ORM\GeneratedValue
@@ -87,15 +89,11 @@ class Product
     private $cartProducts;
 
 
-
-
-
     public function __construct()
     {
         $this->comments = new ArrayCollection();
         $this->cartProducts = new ArrayCollection();
     }
-
 
     public function getId(): ?int
     {
@@ -175,6 +173,7 @@ class Product
         return $this;
     }
 
+
     /**
      * @return Collection|Comment[]
      */
@@ -196,7 +195,6 @@ class Product
     public function removeComment(Comment $comment): self
     {
         if ($this->comments->removeElement($comment)) {
-            // set the owning side to null (unless already changed)
             if ($comment->getProduct() === $this) {
                 $comment->setProduct(null);
             }
@@ -226,7 +224,6 @@ class Product
     public function removeCartProduct(CartProduct $cartProduct): self
     {
         if ($this->cartProducts->removeElement($cartProduct)) {
-            // set the owning side to null (unless already changed)
             if ($cartProduct->getProduct() === $this) {
                 $cartProduct->setProduct(null);
             }
@@ -236,6 +233,70 @@ class Product
     }
 
 
+
+
+    
+    // Méthodes
+
+    public function calculateAverageRates()
+    {
+        $comments = $this->getComments()->toArray();
+
+        if(count($comments) > 0){
+            $allRates = [];
+            $sum = 0;
+    
+            foreach($comments as $comment){
+                array_unshift($allRates, $comment->getNote());
+                $sum += intval($comment->getNote());
+            }
+
+            if($sum === 0){
+                return 0;
+            }else{
+                $average = $sum/count($allRates);
+                return $average;
+            }
+        }else{
+            return null;
+        }
+        
+    }
+    
+    public function replaceValuesByAnotherProduct(Product $otherProduct){
+        $this->setName($otherProduct->getName());
+        $this->setPrice($otherProduct->getPrice());
+        $this->setDescription($otherProduct->getDescription());
+        $this->setStock($otherProduct->getStock());
+    }
+
+    public function sendImageToImgbbAndReturnUrl($imageBase64)
+    {
+        $client = HttpClient::create();
+        $response = $client->request('POST', 'https://api.imgbb.com/1/upload?expiration=15552000&key=602552f9aeec55ba40e0e73f6ab60d8b', [
+            'body' => [
+                "image" => $imageBase64
+            ]
+        ]);
+
+        
+        if($response->getStatusCode() === 200){
+            $imgbbData = json_decode($response->getContent(), true);
+            $this->setImage($imgbbData["data"]["url"]);
+            return $imgbbData["data"]["url"];
+        }else{
+            $this->setImage(null);
+            return null;
+        }
+
+    }
+
+    public function takeFromStock(int $quantity): self
+    {
+        $this->stock -= $quantity;
+
+        return $this;
+    }
 
 
 }

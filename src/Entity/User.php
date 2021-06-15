@@ -5,11 +5,11 @@ namespace App\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Symfony\Component\Validator\Constraints as Assert;
-use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Serializer\Annotation\Groups;
+use App\Repository\UserRepository;
 
 
 /**
@@ -115,15 +115,11 @@ class User implements UserInterface
      */
     private $orders;
 
-
-    
-
     public function __construct()
     {
         $this->CartProduct = new ArrayCollection();
         $this->orders = new ArrayCollection();
     }
-
 
     public function getId(): ?int
     {
@@ -224,7 +220,6 @@ class User implements UserInterface
     public function removeCartProduct(CartProduct $cartProduct): self
     {
         if ($this->CartProduct->removeElement($cartProduct)) {
-            // set the owning side to null (unless already changed)
             if ($cartProduct->getUser() === $this) {
                 $cartProduct->setUser(null);
             }
@@ -307,10 +302,6 @@ class User implements UserInterface
 
     public function getCardNumber(): ?int
     {
-        // $cardNumberString = strval($this->cardNumber);
-        // $lastNumbersOfCardNumber = substr($cardNumberString,-3);
-        // $protectedCardNumber = "***".$lastNumbersOfCardNumber;
-        // return $protectedCardNumber;
         return $this->cardNumber;
     }
 
@@ -328,10 +319,6 @@ class User implements UserInterface
 
     public function setCardExpirationDate($cardExpirationDate): self
     {
-
-        // $dateIso =  new Date($cardExpirationDate);
-        // $date = $dateIso->format('d/y');
-
         $this->cardExpirationDate = $cardExpirationDate;
 
         return $this;
@@ -339,8 +326,6 @@ class User implements UserInterface
 
     public function getCryptogram(): ?int
     {
-        
-        // return "***";
         return $this->cryptogram;
     }
 
@@ -372,7 +357,6 @@ class User implements UserInterface
     public function removeOrder(Order $order): self
     {
         if ($this->orders->removeElement($order)) {
-            // set the owning side to null (unless already changed)
             if ($order->getUser() === $this) {
                 $order->setUser(null);
             }
@@ -383,9 +367,29 @@ class User implements UserInterface
 
 
 
+    // autres méthodes 
 
+    public function verifyEnteredPassword(string $enteredPassword)
+    {
+        $cryptedPassword = $this->getPassword();
+        $response = password_verify ( $enteredPassword , $cryptedPassword );
+        return $response;
+    }
 
+    public function changeEmailOfAllMyOrders($newEmail)
+    {
+        $userOrders = $this->getOrders()->toArray();
+        foreach($userOrders as &$order){
+            $order->setEmail($newEmail);
+        }
+        unset($order);
 
+        return $userOrders;
+    }
 
+    public function getOrdersQuantity(){
+        $orders = $this->getOrders()->toArray();
+        return count($orders);
+    }
 
 }

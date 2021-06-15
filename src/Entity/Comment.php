@@ -4,9 +4,9 @@ namespace App\Entity;
 
 use DateTime;
 use Doctrine\ORM\Mapping as ORM;
-use App\Repository\CommentRepository;
 use Symfony\Component\Serializer\Annotation\Groups;
-
+use Symfony\Component\Validator\Constraints as Assert;
+use App\Repository\CommentRepository;
 
 /**
  * @ORM\Entity(repositoryClass=CommentRepository::class)
@@ -35,6 +35,7 @@ class Comment
 
     /**
      * @ORM\Column(type="integer")
+     * @Assert\Positive
      * @Groups({"commentWithoutProduct"})
      */
     private $note;
@@ -137,7 +138,6 @@ class Comment
 
     public function getDate()
     {
-        // :?\DateTimeInterface
         $dateTime = $this->date; // objet datetime sous format iso8601
         $theDate = $dateTime->format('d/m/y à H:i:s'); // changement de format
         return $theDate;

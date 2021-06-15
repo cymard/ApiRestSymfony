@@ -2,8 +2,9 @@
 
 namespace App\Entity;
 
-use App\Repository\OrderProductRepository;
+use Symfony\Component\Validator\Constraints as Assert;
 use Doctrine\ORM\Mapping as ORM;
+use App\Repository\OrderProductRepository;
 
 /**
  * @ORM\Entity(repositoryClass=OrderProductRepository::class)
@@ -19,15 +20,15 @@ class OrderProduct
 
     /**
      * @ORM\Column(type="integer")
+     * @Assert\PositiveOrZero
      */
     private $quantity;
 
-
     /**
      * @ORM\ManyToOne(targetEntity=Order::class, inversedBy="orderProducts", cascade={"persist", "remove"})
-     * @ORM\JoinColumn(nullable=false)
+     * @ORM\JoinColumn(nullable=false, onDelete="CASCADE")
      */
-    private $userOrder;
+    private $order;
 
     /**
      * @ORM\ManyToOne(targetEntity=Product::class, cascade={"persist", "remove"})
@@ -37,6 +38,7 @@ class OrderProduct
 
     /**
      * @ORM\Column(type="float")
+     * @Assert\PositiveOrZero
      */
     private $price;
 
@@ -57,15 +59,14 @@ class OrderProduct
         return $this;
     }
 
-
-    public function getUserOrder(): ?Order
+    public function getOrder(): ?Order
     {
-        return $this->userOrder;
+        return $this->order;
     }
 
-    public function setUserOrder(?Order $userOrder): self
+    public function setOrder(?Order $order): self
     {
-        $this->userOrder = $userOrder;
+        $this->order = $order;
 
         return $this;
     }
@@ -92,5 +93,15 @@ class OrderProduct
         $this->price = $price;
 
         return $this;
+    }
+
+    static function createOrderProductfromCartProduct(CartProduct $cartProduct) {
+        $orderProduct = new OrderProduct();
+
+        $orderProduct->setQuantity($cartProduct->getQuantity());
+        $product = $cartProduct->getProduct();
+        $orderProduct->setProduct($product);
+        $orderProduct->setPrice($product->getPrice());
+        return $orderProduct;
     }
 }

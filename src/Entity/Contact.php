@@ -2,8 +2,10 @@
 
 namespace App\Entity;
 
-use App\Repository\ContactRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Mime\Email;
+use App\Repository\ContactRepository;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * @ORM\Entity(repositoryClass=ContactRepository::class)
@@ -19,6 +21,9 @@ class Contact
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Assert\Email(
+     *     message = "L'email '{{ value }}' n'est pas valide."
+     * )
      */
     private $email;
 
@@ -88,5 +93,21 @@ class Contact
         $this->message = $message;
 
         return $this;
+    }
+
+    public function sendEmailToAdmins (array $emailAdmins)
+    {
+        $email = (new Email())
+        ->from('site22web22@gmail.com')
+        ->to(...$emailAdmins)
+        ->subject($this->getFirstName().' vous a contacté')
+        ->html('
+            <p>Prénom: '.$this->getFirstName().'</p>
+            <p>Nom: '.$this->getLastName().'</p>
+            <p>Email: '.$this->getEmail().'</p>
+            <p>Message: '.$this->getMessage().'</p>
+        ');
+
+        return $email;
     }
 }

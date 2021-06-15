@@ -3,77 +3,113 @@
 namespace App\Controller;
 
 use App\Entity\order;
-use App\Entity\CartProduct;
 use App\Entity\OrderProduct;
 use App\Repository\OrderRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Knp\Component\Pager\PaginatorInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
+
 class OrderController extends AbstractController
 {
-
     private $em;
+    private $paginator;
+    private $normalizerInterface;
+    private $serializerInterface;
+    private $orderRepo;
 
-    public function __construct(EntityManagerInterface $em)
+    public function __construct(SerializerInterface $serializerInterface, EntityManagerInterface $em, PaginatorInterface $paginator ,NormalizerInterface $normalizerInterface, OrderRepository $orderRepo)
     {
         $this->em = $em;
+        $this->paginator = $paginator;
+        $this->normalizerInterface = $normalizerInterface;
+        $this->orderRepo = $orderRepo;
+        $this->serializerInterface = $serializerInterface;
     }
+
+    private function queryPaginator (Request $request, $query, $page, $orderPerPage)
+    {
+        $articles = $this->paginator->paginate(
+            $query, // Requête contenant les données à paginer (ici nos articles)
+            $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
+            $orderPerPage // Nombre de résultats par page
+        );
+
+        return $articles;
+    }
+
+
+    private function sendJsonResponse ($dataArray,$status = 200)
+    {
+        $response = new JsonResponse();
+        $response->setContent(json_encode($dataArray));
+        $response->setStatusCode($status);
+        return $response;
+    }
+
+    private function getOrderProductsAndQuantity ($orderId)
+    {
+        $order = $this->orderRepo->findOneBy(["id" => $orderId]);
+        $orderProducts = $order->getOrderProducts()->toArray();
+
+        $allProducts = [];
+        
+        foreach($orderProducts as $orderProduct){
+            $quantity = $orderProduct->getQuantity();
+            $product = $this->normalizerInterface->normalize($orderProduct->getProduct(), null , ["groups" => "productWithoutComments"]);
+            $productInformations = ["product" => $product, "quantity" => $quantity];
+            array_push($allProducts, $productInformations);
+        }
+        return $this->sendJsonResponse([
+            "data" => $allProducts
+        ]);
+    }
+
+
+
+
+
 
     /**
      * @Route("/admin/orders", name="all_orders", methods={"GET"})
      * Display orders
      */
-    public function displayOrders(OrderRepository $repo, SerializerInterface $serializerInterface,NormalizerInterface $normalizerInterface,  PaginatorInterface $paginator, Request $request ) 
+    public function displayOrders(Request $request) 
     {
-        if($request->query->get('page') && $request->query->get('search')){
-            $page = (int)$request->query->get('page');
-            $search = $request->query->get('search');
+        $searchQuery = $request->query->get('search');
+        $pageQuery = (int)$request->query->get('page');
 
+        if($pageQuery
+        ){
             $ordersPerPage = 9;
 
-            if($search === "default"){
-               $queryBuilder =  $repo->findAllOrders();
-
+            if($searchQuery === ""){
+               $queryBuilder =  $this->orderRepo->findAllOrders();
             }else{
-                $queryBuilder = $repo->findOrderBySearchingEmail($search);
+                $queryBuilder = $this->orderRepo->findOrderBySearchingEmail($searchQuery);
             }
 
             $allOrders = count($queryBuilder->getQuery()->getResult());
-            $pageNumber = ceil ($allOrders/$ordersPerPage);
+            $numberOfPages = ceil ($allOrders/$ordersPerPage);
+            $paginatedOrders = $this->queryPaginator($request, $queryBuilder->getQuery(), $pageQuery, $ordersPerPage);
+            $paginatedOrders = $this->normalizerInterface->normalize($paginatedOrders,null,["groups" => "order"]);
 
-            $orders = $paginator->paginate(
-                $queryBuilder->getQuery(), // Requête contenant les données à paginer (ici nos articles)
-                $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
-                $ordersPerPage // Nombre de résultats par page
-    
+            return $this->sendJsonResponse([
+                "ordersPerPage" => $ordersPerPage,
+                "allOrdersNumber" => $allOrders, 
+                "totalPageNumber"=>$numberOfPages, 
+                "pageContent"=>$paginatedOrders]
             );
 
-            
-            // convertion des objets en tableaux
-            $ordersArray = $normalizerInterface->normalize($orders,null,["groups" => "order"]);
-           
-            // 3) les afficher
-            // responses
-            $response = new JsonResponse();
-            $response->headers->set('Content-Type', 'application/json');
-
-            // convertion des tableaux en json
-            $allResponses = json_encode(["ordersPerPage" => $ordersPerPage ,"allOrdersNumber" => $allOrders, "totalPageNumber"=>$pageNumber, "pageContent"=>$ordersArray]);
-
-            $response->setContent($allResponses);
-
-            return $response;
-    
         }else{
-            $response = new JsonResponse(['message' => "pas de query param 'page' ou 'search'."]);
-            return $response;
+            return $this->sendJsonResponse([
+                'message' => "pas de query param 'page' ou 'search'."
+            ]);
         }
     }
 
@@ -82,186 +118,120 @@ class OrderController extends AbstractController
      * @Route("/api/order", name="create_an_order", methods={"POST"})
      * Create an order
      */
-    public function createOrder(Request $request,SerializerInterface $serializerInterface,EntityManagerInterface $em, OrderRepository $repo)
+    public function createOrder(Request $request)
     {
-        // récuperer les données en json
-        $dataJson = $request->getContent();
 
-        // deserialiser les données
-        $data = $serializerInterface->deserialize($dataJson, Order::class, "json");
+        if(empty($request->getContent())){
+            return $this->sendJsonResponse([
+                "message" => "Aucun data envoyé"
+            ]);
+        }
+
+        $newOrder = $this->serializerInterface->deserialize($request->getContent(), Order::class, "json");
 
         // vérification du amount
-        if($data->getAmount() === 0 ){
-            $response = new JsonResponse(['message' => "Le montant total ne peut être égal à 0"]);
-            return $response;
+        if($newOrder->getAmount() === 0 ){
+            return $this->sendJsonResponse([
+                'message' => "Le montant total ne peut être égal à 0"
+            ]);
         }
-
 
         $user = $this->getUser();
-        $data->setUser($user);
-        $this->transferCartProductToOrderProduct($data, $user);
+        $newOrder->setUser($user);
 
-        // envoie dans la bdd
-        $em->persist($data);
-        $em->flush();
+        $cartProducts = $user->getCartProduct()->toArray();
 
-        // réponse
+        foreach($cartProducts as $cartProduct){
 
-        if(!empty($dataJson)){
-            //requête qui envoie les données vers app react
-            $response = new Response();
-            $response->setContent($dataJson);
-            $response->headers->set('Content-Type', 'application/json');
-            
-            return $response;
-        }
-    }
-
-
-
-    /**
-     * Transfer cart_product to order_product
-     */
-    public function transferCartProductToOrderProduct($order, $user){
-
-        // récup tous les cart_product correspondant au user
-        $cartProductsCollection = $user->getCartProduct();
-        $cartProductsArray = $cartProductsCollection->toArray();
-
-        foreach($cartProductsArray as $cartProduct){
-
-            // récupère les infos du cartProduct qui nous interesse
-            $product = $cartProduct->getProduct(); // le product n'a pas toutes les infos
-            $quantity = $cartProduct->getQuantity();
-            $price = $product->getPrice();
+            $orderProduct = OrderProduct::createOrderProductfromCartProduct($cartProduct);
+            $orderProduct->setOrder($newOrder);
 
             // baisse du stock
-            $productStock = $product->getStock();
-            $product->setStock($productStock - $quantity);
+            $product = $orderProduct->getProduct();
+            $product->takeFromStock($cartProduct->getQuantity());
 
-            // instanciation d'un nouvel order
-            $orderProduct = new OrderProduct();
-            $orderProduct->setQuantity($quantity);
-            $orderProduct->setProduct($product);
-            $orderProduct->setPrice($price);
-
-            // associer à un order deja existant
-            $orderProduct->setUserOrder($order);
-
-            // envoie des données en bdd
             $this->em->persist($orderProduct);
             $this->em->flush();
 
-            // supprimer tous les cart_products correspondant
+            // supprimer le cart_product correspondant
             $user->removeCartProduct($cartProduct);
 
-            // envoie des données en bdd
             $this->em->remove($cartProduct);
             $this->em->flush();
         }
-   
-    }   
+
+        $this->em->persist($newOrder);
+        $this->em->flush();
+
+        return $this->sendJsonResponse([
+            "message" => "nouvelle commande crée"
+        ]);
+    }
 
 
     /**
      * @Route("/admin/order/{orderId}/cart", name="display_order_products", methods={"GET"})
      * display order products for admin
      */
-    public function displayOrderProducts($orderId, OrderRepository $orderRepo,NormalizerInterface $normalizerInterface, Request $request,SerializerInterface $serializerInterface,EntityManagerInterface $em, OrderRepository $repo)
+    public function displayOneDetailedOrderForAdmin($orderId)
     {
-        // récuperer la commande correspondante
-        $orderArray = $orderRepo->findBy(["id" => $orderId]);
-        $order = $orderArray[0];
-
-        // récuperer les produits de la commande
-        $orderProductsCollection = $order->getOrderProducts();
-        $orderProducts = $orderProductsCollection->toArray();
-
-        $allProducts = [];
-        
-       
-        foreach($orderProducts as $orderProduct){
-            $quantity = $orderProduct->getQuantity();
-
-            $product = $orderProduct->getProduct();
-
-            $productNormalized = $normalizerInterface->normalize($product, null , ["groups" => "productWithoutComments"]);
-
-            $productInformations = ["product" => $productNormalized, "quantity" => $quantity];
-            array_push($allProducts, $productInformations);
-  
-        }
-
-
-
-        // response
-        $response = new Response();
-        $response->setContent(json_encode(["data" => $allProducts]));
-        $response->headers->set('Content-Type', 'application/json');
-
-        return $response;
-
+        return $this->getOrderProductsAndQuantity($orderId);
     }
-
 
     /**
      * @Route("/api/order/{orderId}/cart", name="user_display_order_products", methods={"GET"})
      * display order products
      */
-    public function userDisplayOrderProducts($orderId, OrderRepository $orderRepo,NormalizerInterface $normalizerInterface, Request $request,SerializerInterface $serializerInterface,EntityManagerInterface $em, OrderRepository $repo)
+    public function displayOneDetailedOrderForUser($orderId)
     {
-        // récuperer la commande correspondante
-        $orderArray = $orderRepo->findBy(["id" => $orderId]);
-        $order = $orderArray[0];
+        $order = $this->orderRepo->findOneBy(["id" => $orderId]);
+        $user = $this->getUser();
 
-        // récuperer les produits de la commande
-        $orderProductsCollection = $order->getOrderProducts();
-        $orderProducts = $orderProductsCollection->toArray();
-
-        $allProducts = [];
-       
-        foreach($orderProducts as $orderProduct){
-            $quantity = $orderProduct->getQuantity();
-
-            $product = $orderProduct->getProduct();
-
-            $productNormalized = $normalizerInterface->normalize($product, null , ["groups" => "productWithoutComments"]);
-
-            $productInformations = ["product" => $productNormalized, "quantity" => $quantity];
-            array_push($allProducts, $productInformations);
-  
+        if($user === $order->getUser()){
+            return $this->getOrderProductsAndQuantity($orderId);
+        }else{
+            return $this->sendJsonResponse([
+                "message" => "L'accès à ces informations n'est pas autorisée."
+            ], 401);
         }
-
-        // response
-        $response = new Response();
-        $response->setContent(json_encode(["data" => $allProducts]));
-        $response->headers->set('Content-Type', 'application/json');
-
-        return $response;
-
     }
+
+
 
     /**
      * @Route("/admin/order/{orderId}", name="admin_display_an_order", methods={"GET"})
      * display an order for admin
      */
-    public function adminDisplayAnOrder ($orderId,OrderRepository $repoOrder, NormalizerInterface $normalizerInterface)
+    public function displayInformationOrderForAdmin ($orderId)
     {
-        $order = $repoOrder->findBy(["id" => $orderId]);
-        $orderArray = (array) $order;
-        $order = $orderArray[0];
+        $order = $this->orderRepo->findOneBy(["id" => $orderId]);
 
-        // transformation de l'objet en tableau
-        $orderArray = $normalizerInterface->normalize($order, "json",["groups" => "order"]);
+        $order = $this->normalizerInterface->normalize($order, "json",["groups" => "order"]);
 
-        // response
+        return $this->sendJsonResponse([
+            "orderInformations" => $order
+        ]);
+    }
 
-        $response = new Response();
-        $response->setContent(json_encode(["orderInformations" => $orderArray]));
-        $response->headers->set('Content-Type', 'application/json');
+    /**
+     * @Route("/admin/order", name="order_delete", methods={"DELETE"})
+     * Delete orders
+     */
+    public function deleteOrder (Request $request)
+    {
+        $ordersToDelete = (array)json_decode($request->getContent());
+        $ordersToDelete = $ordersToDelete["selectedOrders"];
 
-        return $response;
+        foreach($ordersToDelete as $id){
+            $order = $this->orderRepo->find($id);
 
+            $this->em->remove($order);
+            $this->em->flush();
+        }
+
+        return $this->sendJsonResponse([
+            "message" => "Commande(s) supprimée(s)"    
+        ]);
     }
 
 
@@ -269,23 +239,22 @@ class OrderController extends AbstractController
      * @Route("/api/order/{orderId}", name="user_display_an_order", methods={"GET"})
      * display an order
      */
-    public function userDisplayAnOrder ($orderId,OrderRepository $repoOrder, NormalizerInterface $normalizerInterface)
+    public function displayInformationOrderForUser ($orderId)
     {
-        $order = $repoOrder->findBy(["id" => $orderId]);
-        $orderArray = (array) $order;
-        $order = $orderArray[0];
+        $order = $this->orderRepo->findOneBy(["id" => $orderId]);
+        $user = $this->getUser();
 
-        // transformation de l'objet en tableau
-        $orderArray = $normalizerInterface->normalize($order, "json",["groups" => "order"]);
+        if($user === $order->getUser()){
+            $order = $this->normalizerInterface->normalize($order, "json",["groups" => "order"]);
 
-        // response
-
-        $response = new Response();
-        $response->setContent(json_encode(["orderInformations" => $orderArray]));
-        $response->headers->set('Content-Type', 'application/json');
-
-        return $response;
-
+            return $this->sendJsonResponse([
+                "orderInformations" => $order
+            ]);
+        }else{
+            return $this->sendJsonResponse([
+                "message" => "L'accès à ses informations n'est pas autorisé"
+            ], 401);
+        }
     }
 
 
@@ -294,60 +263,38 @@ class OrderController extends AbstractController
      * @Route("/api/orders", name="display_all_user_orders", methods={"GET"})
      * display all orders of a user
      */
-    public function displayUserOrders( NormalizerInterface $normalizerInterface, Request $request, PaginatorInterface $paginator, OrderRepository $orderRepo)
-    {
-        if($request->query->get('page') && $request->query->get('date') ){
+    public function displayUserOrders(Request $request)
+    { 
+        $pageQuery = $request->query->get('page');
+        $dateQuery = $request->query->get('date');
 
-
-            $page = $request->query->get('page');
-            $date = $request->query->get('date');
+        if($pageQuery && $dateQuery ){
 
             $user = $this->getUser();
             $userEmail = $user->getEmail();
-            $ordersCollection = $user->getOrders();
-            $ordersArray = $ordersCollection->toArray();
+            // $ordersArray = $user->getOrders()->toArray();
             $ordersPerPage = 9;
 
-            // if($date === 'desc'){
-            //     $queryBuilder = $orderRepo->findAllOrdersOfEmail($userEmail);
-            // }else if($date === 'asc'){
-            //     $queryBuilder = $orderRepo->findOrderByAscDate($userEmail);
-            // }else{
-            //     $queryBuilder = $orderRepo->findAllOrdersOfEmail($userEmail);
-            // }
-            $data = $orderRepo->findAllOrdersByDate($userEmail, $date);
 
-            $allOrders = count($data->getQuery()->getResult());
+            $dataQueryBuilder = $this->orderRepo->findAllOrdersByDate($userEmail, $dateQuery);
+
+            $allOrders = count($dataQueryBuilder->getQuery()->getResult());
             $pageNumber = ceil($allOrders/9);
-            // pagination
-            // recup la query
-    
-            // system de pagination
-            $orders = $paginator->paginate(
-                $data->getQuery(), // Requête contenant les données à paginer (ici nos articles)
-                $request->query->getInt('page', $page), // Numéro de la page en cours, passé dans l'URL, 1 si aucune page
-                $ordersPerPage // Nombre de résultats par page
-    
-            );
+            $paginatedOrders = $this->queryPaginator($request, $dataQueryBuilder->getQuery(), $pageQuery, $ordersPerPage);
 
-    
-            // convertion des objets en tableaux
-            $ordersArray = $normalizerInterface->normalize($orders,null,["groups" => "order"]);
-           
-            // 3) les afficher
-            // responses
-            $response = new JsonResponse();
-            $response->headers->set('Content-Type', 'application/json');
+            $ordersArray = $this->normalizerInterface->normalize($paginatedOrders,null,["groups" => "order"]);
 
-            // convertion des tableaux en json
-            $allResponses = json_encode(["ordersPerPage" => $ordersPerPage ,"allOrdersNumber" => $allOrders, "totalPageNumber"=>$pageNumber, "pageContent"=>$ordersArray]);
-
-            $response->setContent($allResponses);
-
-            return $response;
+            return $this->sendJsonResponse([
+                "ordersPerPage" => $ordersPerPage,
+                "allOrdersNumber" => $allOrders, 
+                "totalPageNumber"=>$pageNumber, 
+                "pageContent"=>$ordersArray
+            ]);
     
         }else{
-            return "error";
+            return $this->sendJsonResponse([
+                'message' => "error"
+            ]);
         }
         
     }
@@ -356,21 +303,30 @@ class OrderController extends AbstractController
      * @Route("/api/user/order", name="user_order_number", methods={"GET"})
      * Display User orders number
      */
-    public function userOrderNumber()
+    public function getOrdersQuantityOfOneUser()
     {
-        $user = $this->getUser();
-        $orderCollection = $user->getOrders();
-        $orderArray = $orderCollection->toArray();
-        $orderNumber = count($orderArray);
+        $ordersNumber = $this->getUser()->getOrdersQuantity();
 
-
-        $response = new Response();
-        $response->headers->set('Content-Type', 'application/json');
-        $response->setContent(json_encode([
-            'orderNumber' => $orderNumber,
-        ]));
-
-        return $response;
+        return $this->sendJsonResponse([
+            'orderNumber' => $ordersNumber
+        ]);
     }
 
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

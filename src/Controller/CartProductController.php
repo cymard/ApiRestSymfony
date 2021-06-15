@@ -2,27 +2,52 @@
 
 namespace App\Controller;
 
-use App\Entity\User;
-use App\Entity\Product;
 use App\Entity\CartProduct;
-use App\Repository\UserRepository;
 use App\Repository\ProductRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\CartProductRepository;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 class CartProductController extends AbstractController
 {
 
     private $em;
+    private $cartProductRepository;
+    private $productRepository;
+    private $normalizerInterface;
 
-    public function __construct(EntityManagerInterface $em)
+    public function __construct(NormalizerInterface $normalizerInterface, ProductRepository $productRepository, EntityManagerInterface $em, CartProductRepository $cartProductRepository)
     {
         $this->em = $em;
+        $this->cartProductRepository = $cartProductRepository;
+        $this->productRepository = $productRepository;
+        $this->normalizerInterface = $normalizerInterface;
+    }
+
+    private function sendJsonResponse ($dataArray,$status = 200)
+    {
+        $response = new JsonResponse();
+
+        $response->setContent(json_encode($dataArray));
+        
+        $response->setStatusCode($status);
+        return $response;
+    }
+
+    private function addQuantityToCartProduct(CartProduct $cartProduct)
+    {
+        $newQuantity = $cartProduct->getQuantity() + 1;
+        $cartProduct->setQuantity($newQuantity);
+
+        $this->em->flush($cartProduct);
+
+        return $cartProduct;
     }
 
 
@@ -31,263 +56,155 @@ class CartProductController extends AbstractController
      * add a product to cartProduct
      * quantity
      */
-    public function addProductToCart($id, CartProductRepository $cartRepo,Request $request,ProductRepository $productRepo, EntityManagerInterface $em, SerializerInterface $serializerInterface)
+    public function addProductToCart($id,Request $request)
     {
-        // récuperer le user grace au token
-        $dataJson = $request->getContent();
 
-        // je recois l'id du user au lieu de l'id du shoppingCart
-        $dataStdClass = json_decode($dataJson); // class standard
-
-        // conversion sous forme de tableau pour avoir accès aux données
-        $dataArray = (array) $dataStdClass; 
-
+        $dataArray = (array)json_decode($request->getContent());
         $user = $this->getUser();
-
-        // envoyer le produit dans le cartProduct
-        $cartProduct = new CartProduct();
-        $cartProduct->setUser($user);
-
-        //  $product
-        $productArray = $productRepo->findBy(["id" => $id]);
-        $product = $productArray[0];
+        $product = $this->productRepository->findOneBy(["id" => $id]);
 
         // vérification des stocks
         if($product->getStock() === 0 ){
-            $response = new Response(json_encode(["message" => "impossible d'ajouter le produit au panier car le produit n'est plus en stock."]));
-            $response->headers->set('Content-type','application/json');
-            $response->setStatusCode(Response::HTTP_OK);
-            return $response;
+            return $this->sendJsonResponse([
+                "message" => "impossible d'ajouter le produit au panier car le produit n'est plus en stock."
+            ]);
         }
 
-
-
-        $cartProduct->setProduct($product); // surement l'entité product au complet
-
-        //  $quantity
+        $cartProduct = new CartProduct();
+        $cartProduct->setUser($user);
+        $cartProduct->setProduct($product); 
         $cartProduct->setQuantity($dataArray["quantity"]);
 
-        $existingCartProduct = $cartRepo->findBy(["user" => $cartProduct->getUser(), "product" =>$cartProduct->getProduct()]);
+        $isExistingCartProduct = $this->cartProductRepository->findOneBy(["user" => $cartProduct->getUser(), "product" =>$cartProduct->getProduct()]);
 
-        /*regarder si la ligne existe deja*/
-        if($existingCartProduct != []){
-            // capturer l'erreur 500 due à la clé unique
-            // reprendre le meme produit
-            // augmenter la quantité avec +1 du produit
-            $this->addQuantityToCartProduct($product->getId());
+        if($isExistingCartProduct != []){
+            // augmenter la quantité en +1 du produit
+            $this->addQuantityToCartProduct($isExistingCartProduct);
         }else{
-            $em->persist($cartProduct);
-            $em->flush();
+            $this->em->persist($cartProduct);
+            $this->em->flush();
         }
 
-        // réponse
-        $cartProductJson = $serializerInterface->serialize($cartProduct, "json", ["groups" => "cartProductWithoutRelation"]);
+        $cartProductArray = $this->normalizerInterface->normalize($cartProduct, null, ["groups" => "cartProductWithoutRelation"]);
 
-        $response = new Response();
-        $response->setContent($cartProductJson);
-        $response->headers->set('Content-type','application/json');
-        $response->setStatusCode(Response::HTTP_OK);
-        return $response;
+        return $this->sendJsonResponse($cartProductArray);
     }
-
-    public function addQuantityToCartProduct($id)
-    {
-        
-        $productRepo = $this->getDoctrine()->getRepository(Product::class);
-        
-        $cartProductRepository = $this->getDoctrine()->getRepository(CartProduct::class);
-
-        
-        $user = $this->getUser();
-
-        // trouver le product correspondant à l'id
-        $productArray = $productRepo->findBy(["id" => $id]);
-        $product = $productArray[0];
-
-        // trouver le cartProduct avec le compte user et le produit
-        $cartProductArray = $cartProductRepository->findBy(["user" => $user, "product" => $product]);
-        $cartProduct = $cartProductArray[0];
-
-        // quantité actuelle +1
-        $newQuantity = $cartProduct->getQuantity() + 1;
-
-        // changement de la quantité 
-        $cartProduct->setQuantity($newQuantity);
-
-        // envoyer le nouveau data
-        $this->em->persist($cartProduct);
-        $this->em->flush();
-
-      }
-  
-
 
 
     /**
      * @Route("/api/cart/products", name="display_cart_products", methods={"GET"})
      * Display content of a shoppingCart
      */
-    public function getShoppingCartProducts(ProductRepository $productRepo)
+    public function getShoppingCartProducts()
     {
         $user = $this->getUser();
 
         // trouver tous les products avec id du shoppingCart dans CartProduct
-        $allProductsCollection = $user->getCartProduct();
-        $allProductsArray = $allProductsCollection->toArray();
+        $allCartProducts = $user->getCartProduct()->toArray();
 
-        // les afficher 
         $totalPrice = 0;
-        $allProducts = [];
+        $allProductsInformations = [];
         $totalArticles = 0;
 
-        foreach($allProductsArray as $product){
+        foreach($allCartProducts as $cartProduct){
 
-            $productInformationsId = $product->getProduct();
-            $productInformationsArray = $productRepo->findBy(["id" => $productInformationsId]);
-            $productInformations = $productInformationsArray[0];
-
-            
-            // App\Entity\Product {#1037
-            //     -id: 54
-            //     -price: 44.0
-            //     -image: null
-            //     -description: "description"
-            //     -name: "carte micro sd"
-            //     -category: "informatique/high-tech"
-            //     -stock: 0
-            //     -comments: Doctrine\ORM\PersistentCollection {#1100}
-            //   }
+            $productId = $cartProduct->getProduct();
+            $productInformations = $this->productRepository->findOneBy(["id" => $productId]);
 
             $productData = [
                 "id" => $productInformations->getId(),
                 "title" => $productInformations->getName(), 
                 "price" => $productInformations->getPrice(),
                 "image" => $productInformations->getImage(),
-                "quantity" => $product->getQuantity(), 
-                "totalPrice" => $product->getQuantity() * $productInformations->getPrice()
+                "quantity" => $cartProduct->getQuantity(), 
+                "totalPrice" => $cartProduct->getQuantity() * $productInformations->getPrice()
             ];
 
-            array_push($allProducts, $productData);
+            array_push($allProductsInformations, $productData);
 
             $totalPrice += $productData["totalPrice"];
             $totalArticles += $productData["quantity"];
 
         }
 
-        $json = json_encode(["allProducts" => $allProducts,"totalPrice" => $totalPrice, "totalArticles" => $totalArticles]);
-
-        // La réponse en json
-        $response = new Response();
-        $response->setContent($json);
-        $response->headers->set('Content-type','application/json');
-        $response->setStatusCode(Response::HTTP_OK);
-        return $response;
+        return $this->sendJsonResponse([
+            "allProducts" => $allProductsInformations,
+            "totalPrice" => $totalPrice, 
+            "totalArticles" => $totalArticles
+        ]);
     }
 
 
 
-
-
-     /**
+    /**
      * @Route("/api/cart/product/{id}/quantity", name="change_cart_product_quantity", methods={"PUT"})
      * Change quantity of shoppingCart product
-     * quanity
+     * quantity
      */
-    public function changeProductQuantity ($id, Request $request, ProductRepository $productRepo, CartProductRepository $cartProductRepository)
+    public function changeCardProductQuantity ($id,Request $request)
     {
+        $data = (array)json_decode($request->getContent());
+        $data["quantity"];
 
-        $dataJson = $request->getContent();
-
-        // recuperer le nom du user
-        $dataStdClass = json_decode($dataJson);
-        $dataArray = (array) $dataStdClass;
-        $newQuantity = $dataArray["quantity"];
         $user = $this->getUser();
 
-        // trouver le product correspondant à l'id
-        $productArray = $productRepo->findBy(["id" => $id]);
-        $product = $productArray[0];
-
-        // comparison du stock avec la quantité demandée
-        $productStock = $product->getStock();
+        $productOfCartProduct = $this->productRepository->findOneBy(["id" => $id]);
+        $cartProduct = $this->cartProductRepository->findOneBy(["user" => $user, "product" => $productOfCartProduct]);
     
-        if($newQuantity == 0){
-            // supprimer
-
-            // trouver le cartProduct avec le compte user et le produit
-            $cartProductArray = $cartProductRepository->findBy(["user" => $user, "product" => $product]);
-            $cartProduct = $cartProductArray[0];
+        if($data["quantity"] == 0){
 
             // supprimer le cartProduct depuis le User
             $user->removeCartProduct($cartProduct);
-            // supprimer le produit du panier
 
+            // supprimer le produit du panier
             $this->em->remove($cartProduct);
             $this->em->flush();
 
-            // retourner la réponse
-            $response = $this->json(["message" => "product delete from shopping cart"], 200);
-            return $response;
+            return $this->sendJsonResponse([
+                "message" => "Le produit a été supprimé."
+            ]);
 
-        }else if($productStock < $newQuantity){
+        }else if($productOfCartProduct->getStock() < $data["quantity"] ){
 
-            // remettre l'ancienne quantité demandée
-            $cartProductArray = $cartProductRepository->findBy(["user" => $user, "product" => $product]);
-            $cartProduct = $cartProductArray[0];
-
-            $response = $this->json(["erreur" => "La quantité demandée est supérieure au stock du produit", "number" => $cartProduct->getQuantity()], 200);
-            return $response;
+            // Ne pas changer la quantité
+            return $this->sendJsonResponse([
+                "erreur" => "La quantité demandée est supérieure au stock du produit",
+                "number" => $cartProduct->getQuantity()
+            ]);
 
         }else{
-            // trouver le cartProduct avec le compte user et le produit
-            $cartProductArray = $cartProductRepository->findBy(["user" => $user, "product" => $product]);
-            $cartProduct = $cartProductArray[0];
 
             // changement de la quantité 
-            $cartProduct->setQuantity($newQuantity);
+            $cartProduct->setQuantity($data["quantity"] );
 
-            // envoyer le nouveau data
-            $this->em->persist($cartProduct);
-            $this->em->flush();
-
-            // retourner la réponse
-            $response = $this->json(["message" => "quantity changed"], 200);
-            return $response;
+            $this->em->flush($cartProduct);
+            return $this->sendJsonResponse([
+                "message" => "La quantité a été modifiée."
+            ]);
         }
     }
 
-
-
-    
 
     /**
      * @Route("/api/cart/product/{id}/delete", name="delete_cart_product_quantity", methods={"DELETE"})
      * Delete a product in CartProduct
      * email
      */
-    public function deleteProduct ($id,ProductRepository $productRepo, CartProductRepository $cartProductRepository ,EntityManagerInterface $em)
+    public function deleteCartProduct ($id)
     {
-
         $user = $this->getUser();
-
-        // trouver le product correspondant à l'id
-        $productArray = $productRepo->findBy(["id" => $id]);
-        $product = $productArray[0];
-
-        // trouver le cartProduct avec le compte user et le produit
-        $cartProductArray = $cartProductRepository->findBy(["user" => $user, "product" => $product]);
-        $cartProduct = $cartProductArray[0];
-
-        // supprimer le cartProduct depuis le User
+        $product = $this->productRepository->findOneBy(["id" => $id]);
+        $cartProduct = $this->cartProductRepository->findOneBy(["user" => $user, "product" => $product]);
         $user->removeCartProduct($cartProduct);
 
-        // supprimer le produit du panier
-        $em->remove($cartProduct);
-        $em->flush();
+        $this->em->remove($cartProduct);
+        $this->em->flush();
 
-        // retourner la réponse
-        $response = $this->json(["message" => "product delete from shopping cart"], 200);
-        return $response;
+        return $this->sendJsonResponse([
+            "message" => "Produit supprimé du panier."
+        ]);
     }
 
 }
+
+

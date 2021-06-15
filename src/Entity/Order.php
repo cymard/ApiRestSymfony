@@ -4,10 +4,12 @@ namespace App\Entity;
 
 use DateTime;
 use Doctrine\ORM\Mapping as ORM;
-use App\Repository\OrderRepository;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
+use App\Repository\OrderRepository;
+
 
 /**
  * @ORM\Entity(repositoryClass=OrderRepository::class)
@@ -49,12 +51,20 @@ class Order
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Assert\NotBlank
+     * @Assert\Email(
+     *     message = "L'email '{{ value }}' n'est pas valide."
+     * )
      * @Groups({"order"})
      */
     private $email;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Assert\Choice(
+     *     choices = {"VISA", "MasterCard", "American Express"},
+     *     message = "Choisissez une méthode de paiement valide."
+     * )
      * @Groups({"order"})
      */
     private $paymentMethod;
@@ -67,6 +77,10 @@ class Order
 
     /**
      * @ORM\Column(type="integer")
+     * @Assert\CardScheme(
+     *     schemes={"VISA"},
+     *     message="Votre numéro de carte est invalide."
+     * )
      * @Groups({"order"})
      */
     private $cardNumber;
@@ -79,6 +93,9 @@ class Order
 
     /**
      * @ORM\Column(type="integer")
+     * @Assert\Positive
+     * @Assert\GreaterThanOrEqual(100)
+     * @Assert\LessThan(1000)
      * @Groups({"order"})
      */
     private $cryptogram;
@@ -86,12 +103,13 @@ class Order
 
     /**
      * @ORM\Column(type="float")
+     * @Assert\Positive
      * @Groups({"order"})
      */
     private $amount;
 
     /**
-     * @ORM\OneToMany(targetEntity=OrderProduct::class, mappedBy="userOrder")
+     * @ORM\OneToMany(targetEntity=OrderProduct::class, mappedBy="order")
      */
     private $orderProducts;
 
@@ -110,15 +128,8 @@ class Order
     public function __construct()
     {
         $this->createdDate = new DateTime();
-        // DateTime::createFromFormat('j-M-Y', date("D M d, Y G:i"));
         $this->orderProducts = new ArrayCollection();
     }
-
-
-    // /**
-    //  * @ORM\Column(type="date")
-    //  */
-    // private $testest;
 
     public function getId(): ?int
     {
@@ -211,7 +222,6 @@ class Order
 
     public function getCardNumber()
     {
-        // return $this->cardNumber;
         $cardNumberString = substr($this->cardNumber, -3);
         $protectedCardNumber = "***".strval($cardNumberString);
         return $protectedCardNumber;
@@ -226,8 +236,6 @@ class Order
 
     public function getCardExpirationDate()
     {
-        // ?\DateTimeInterface
-        // return $this->cardExpirationDate;
         $dateTime = $this->cardExpirationDate; // objet datetime sous format iso8601
         $theDate = $dateTime->format('m/y'); // changement de format
         return $theDate;
@@ -264,18 +272,6 @@ class Order
         return $this;
     }
 
-    // public function getTestest(): ?\DateTimeInterface
-    // {
-    //     return $this->testest;
-    // }
-
-    // public function setTestest(\DateTimeInterface $testest): self
-    // {
-    //     $this->testest = $testest;
-
-    //     return $this;
-    // }
-
     /**
      * @return Collection|OrderProduct[]
      */
@@ -288,7 +284,7 @@ class Order
     {
         if (!$this->orderProducts->contains($orderProduct)) {
             $this->orderProducts[] = $orderProduct;
-            $orderProduct->setUserOrder($this);
+            $orderProduct->setOrder($this);
         }
 
         return $this;
@@ -297,9 +293,8 @@ class Order
     public function removeOrderProduct(OrderProduct $orderProduct): self
     {
         if ($this->orderProducts->removeElement($orderProduct)) {
-            // set the owning side to null (unless already changed)
-            if ($orderProduct->getUserOrder() === $this) {
-                $orderProduct->setUserOrder(null);
+            if ($orderProduct->getOrder() === $this) {
+                $orderProduct->setOrder(null);
             }
         }
 
@@ -314,13 +309,11 @@ class Order
     public function setUser(?User $user): self
     {
         $this->user = $user;
-
         return $this;
     }
 
     public function getCreatedDate()
     {
-        // return $this->createdDate;
         $dateTime = $this->createdDate; // objet datetime sous format iso8601
         $theDate = $dateTime->format('d/m/y'); // changement de format
         return $theDate;
@@ -332,6 +325,4 @@ class Order
 
         return $this;
     }
-
-   
 }

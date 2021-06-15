@@ -1,14 +1,14 @@
 {% extends 'base.html.twig' %}
 
-
-{% block title %}Hello ContactController!{% endblock %}
+{% block title %}Nous contacter{% endblock %}
 
 {% block body %}
 
-
 <nav class="navbar navbar-light bg-light">
     <div class="container-fluid d-flex justify-content-center align-items-center">
-        <a class="navbar-brand" href="http://localhost:3000/products?category=all&page=1"><i class="fas fa-home fa-2x"></i></a>
+        <a class="navbar-brand" href="http://localhost:3000/products?category=all&page=1">
+            <i class="fas fa-home fa-2x"></i>
+        </a>
     </div>
 </nav>
 
@@ -18,7 +18,5 @@
         {{ form(form) }}
     </div>
 </div>
-
-
 
 {% endblock %}

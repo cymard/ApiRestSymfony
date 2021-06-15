@@ -2,15 +2,10 @@
 
 namespace App\Entity;
 
-use App\Repository\CartProductRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 use App\Entity\Product;
-use Doctrine\ORM\Mapping\UniqueConstraint;
-
-
+use App\Repository\CartProductRepository;
 
 /**
  * @ORM\Entity(repositoryClass=CartProductRepository::class)
@@ -46,13 +41,10 @@ class CartProduct
      */
     private $product;
 
-
-
     public function getId(): ?int
     {
         return $this->id;
     }
-
 
     public function getQuantity(): ?int
     {
@@ -89,17 +81,5 @@ class CartProduct
 
         return $this;
     }
-
-
-
-
-
-   
-   
-
-
-    
-   
-
 
 }
