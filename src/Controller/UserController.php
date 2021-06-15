@@ -3,40 +3,79 @@
 namespace App\Controller;
 
 use App\Entity\User;
-use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
 
 
+
 class UserController extends AbstractController
 {
+    private $em;
+    private $validator;
+    private $userPasswordEncoderInterface;
+    private $normalizerInterface;
+
+    public function __construct(EntityManagerInterface $em, ValidatorInterface $validator, UserPasswordEncoderInterface $userPasswordEncoderInterface, NormalizerInterface $normalizerInterface)
+    {
+        $this->em = $em;
+        $this->validator = $validator;
+        $this->userPasswordEncoderInterface = $userPasswordEncoderInterface;
+        $this->normalizerInterface = $normalizerInterface;
+    }
+
+    private function sendJsonResponse ($dataArray,$status = 200)
+    {
+        $response = new JsonResponse();
+        $response->setContent(json_encode($dataArray));
+        $response->setStatusCode($status);
+        return $response;
+    }
+
+    private function encryptDataPassword ($data)
+    {
+        $user = new User();
+        $password = $data->getPassword(); // password qui doit être crypté
+        $passwordHashed = $this->userPasswordEncoderInterface->encodePassword($user, $password);
+        $data->setPassword($passwordHashed);
+
+        return $data;
+    }
+
+    private function transformDataJsonIntoDataArray(Request $request)
+    {
+        $dataJson = $request->getContent();
+        $dataStdClass = json_decode($dataJson);
+        $data = (array) $dataStdClass;
+
+        return $data;
+    }
+
+    private function saveInDatabase($dataObject)
+    {
+        $this->em->persist($dataObject);
+        $this->em->flush();
+    }
+
+
 
     /**
-     * @Route("/admin/users", name="users", methods={"GET"})
-     * Display all accounts
+     * @Route("/api/connectedAccount", name="user_information", methods={"GET"})
+     * Display all informations of a user
      */
-    public function getUsers(UserRepository $userRepository, SerializerInterface $serializerInterface)
+    public function getUserInformations()
     {
-        // 1) connexion repository
-        $data = $userRepository->findAll();
-        $json = $serializerInterface->serialize($data,"json");
+        $userObject = $this->getUser();
+        $userArray= $this->normalizerInterface->normalize($userObject, "json", ["groups" => "UserInformation"]);
 
-        // 2) récuperer tous les comptes
-        // 3) les afficher
-        if(!empty($json)){
-            //requête qui envoie les données vers app react
-            $response = new Response();
-            $response->setContent($json);
-            $response->headers->set('Content-Type', 'application/json');
-            
-            return $response;
+        if(!empty($userArray)){
+            return $this->sendJsonResponse($userArray);
         }
     }
 
@@ -44,110 +83,126 @@ class UserController extends AbstractController
      * @Route("/register", name="register", methods={"POST"})
      * Create an account
      */
-    public function register(Request $request, SerializerInterface $serializerInterface, EntityManagerInterface $em ,ValidatorInterface $validator,UserPasswordEncoderInterface $encoder)
+    public function register(Request $request)
     {
-        // 1) reçoit les données en POST
-        $json = $request->getContent();
+        $dataJson = $request->getContent();
 
         try{
 
-            $data = $serializerInterface->deserialize($json,User::class,"json");
+            $dataObject = $this->serializerInterface->deserialize($dataJson,User::class,"json");
+            $dataObject->setRoles(["ROLE_USER"]);
+            // $errors = $this->validator->validate($dataObject);
+            // if (count($errors) > 0) {
+            //     return $this->json((string)$errors,400);
+            // }
 
-            // Vérification de la validité des données avant de les envoyer en bdd
-            $errors = $validator->validate($data);
+            $this->encryptDataPassword($dataObject);
+            $this->saveInDatabase($dataObject);
 
-            if (count($errors) > 0) {
-                return $this->json($errors,400);
-            }
-
-            // 2) encryptage du password
-            $user = new User();
-            $password = $data->getPassword(); // password qui doit etre crypté
-            $passwordHashed = $encoder->encodePassword($user, $password);
-            // $passwordHashed = password_hash($password, PASSWORD_DEFAULT);
-            $data->setPassword($passwordHashed);
-
-
-
-            // 3) envoie des données en bdd
-            $em->persist($data);
-            $em->flush();
-
-            return $this->json([
-                'email' => $data->getUsername(),
-                'role' => $data->getRoles()
+            return $this->sendJsonResponse([
+                'email' => $dataObject->getUsername(),
+                'role' => $dataObject->getRoles()
             ],201);
 
         }catch(NotEncodableValueException $e){
-            return $this->json([
-                "status" => 400,
+            return $this->sendJsonResponse([
                 "erreur" => $e->getMessage()
-            ]);
+            ],400);
         }
     }
 
 
-    // /**
-    //  * @Route("/login", name="login", methods={"POST"})
-    //  * Connect to an account
-    //  */
-    // public function login(Request $request, SerializerInterface $serializerInterface, UserRepository $userRepository,UserPasswordEncoderInterface $encoder)
-    // {
-    //     // 1) reçoit les données de connexion
-    //     $json = $request->getContent();
-    //     $data = $serializerInterface->deserialize($json,User::class,"json");
+    /**
+     * @Route("/api/user/paymentInformations", name="send_user_payment_informations", methods={"PUT"})
+     * send User Payment Informations
+     */
+    public function sendUserPaymentInformations(Request $request)
+    {
+        $data = json_decode($request->getContent());
+        $user = $this->getUser();
 
-    //     // 2) vérifier que les données existes
-    //     // 2) vérification email existe
-    //     $email = $data->getEmail();
-    //     $targetedAccount = $userRepository->findOneBy(["email" => $email]);
+        $user->setFirstName($data->firstName);
+        $user->setLastName($data->lastName); 
+        $user->setCity($data->city); 
+        $user->setAddress($data->address); 
+        $user->setPaymentMethod($data->paymentMethod); 
+        $user->setCardName($data->cardName); 
+        $user->setCardNumber($data->cardNumber); 
+        $user->setCardExpirationDate($data->cardExpirationDate); 
+        $user->setCryptogram($data->cryptogram); 
 
-    //     if($targetedAccount === null){
-    //         return $this->json([
-    //             "account" => "do not exist"
-    //         ],400);
-    //     }
+        $this->em->flush($user);
         
-    //     // 2) verifie que le password (décrypté) correspond à l'email
-    //     $password = $data->getPassword();
-    //     $targetedAccountPassword = $targetedAccount->getPassword();
-
-    //     $user = new User();
-    //     // if(password_verify( $password , $targetedAccountPassword )){
-    //     // dd($encoder->isPasswordValid($user, $password));
-    //     if(password_verify( $password , $targetedAccountPassword )){
-    //         // réponse sans le password
-    //         return $this->json([
-    //             "id" => $targetedAccount->getId(),
-    //             "email" => $targetedAccount->getEmail(),
-    //             "role" => $targetedAccount->getRole()
-    //         ],200);
-
-    //     }else{
-    //         return $this->json([
-    //             "account" => "wrong password"
-    //         ],400);
-    //     };
-
-    //     // 3) generer un token   
-    // }
-
-    // /**
-    //  * @Route("/api/login_check", name="login_check", methods={"POST"})
-    //  * Connect to an account
-    //  */
-    // public function checkLogin()
-    // {
-    //     // 1) on récupere les données
-    //     $user = $this->getUser();
+        return $this->sendJsonResponse([
+            'informations' => $data
+        ]);
+    }
 
 
-    //     // 2) on retourne le compte
-    //     return $this->json([
-    //         "email"=>$user->getEmail(),
-    //         "role"=>$user->getRole()
-    //     ],200);
+    /**
+     * @Route("/api/modify/password", name="user_modify_password", methods={"PUT"})
+     * Modify actual password
+     */
+    public function modifyActualPassword(Request $request)
+    {
+        $data = $this->transformDataJsonIntoDataArray($request);
 
-    // }
+        $oldPassword = $data["oldPassword"];
+        $newPassword = $data["newPasswordOne"];
+
+        if($data["newPasswordOne"] !== $data["newPasswordTwo"]){
+            return $this->sendJsonResponse([
+                'message' => "Les nouveaux mots de passe entrés ne sont pas identiques."
+            ],403);
+        }
+
+        $user = $this->getUser();
+
+        if($user->verifyEnteredPassword($oldPassword) !== true){
+            return $this->sendJsonResponse([
+                'message' => "Le mot de passe entré est incorrect."
+            ],403);
+        }
+
+        $user->setPassword(password_hash ($newPassword, PASSWORD_BCRYPT, ["cost" => 12]));
+
+        $this->em->flush($user);
+
+        return $this->sendJsonResponse([
+            'message' => "Mot de passe modifié avec succès."
+        ]);
+    }
+
+
+    /**
+     * @Route("/api/modify/email", name="user_modify_email", methods={"PUT"})
+     * Modify actual email
+     */
+    public function modifyActualEmail(Request $request){
+
+        $data = $this->transformDataJsonIntoDataArray($request);
+        $user = $this->getUser();
+
+        if($user->verifyEnteredPassword($data["password"]) !== true){
+            return $this->sendJsonResponse([
+                'message' => "Le mot de passe entré est incorrect."
+            ],403);
+        }
+
+        $userOrders = $user->changeEmailOfAllMyOrders($data["newEmail"]);
+        $this->em->flush($userOrders);
+
+        // changement de l'email
+        $user->setEmail($data["newEmail"]);
+
+        $this->em->flush($user);
+
+        return $this->sendJsonResponse([
+            'message' => "Email modifié avec succès."
+        ]);
+    }
 
 }
+
+
+
