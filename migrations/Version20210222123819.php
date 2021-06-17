@@ -20,7 +20,7 @@ final class Version20210222123819 extends AbstractMigration
     public function up(Schema $schema) : void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE comment CHANGE date date DATETIME DEFAULT CURRENT_TIME');
+        // $this->addSql('ALTER TABLE comment CHANGE date date DATETIME DEFAULT CURRENT_TIME');
     }
 
     public function down(Schema $schema) : void
