@@ -20,8 +20,8 @@ final class Version20210228123122 extends AbstractMigration
     public function up(Schema $schema) : void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE user ADD CONSTRAINT FK_8D93D64945F80CD FOREIGN KEY (shopping_cart_id) REFERENCES shopping_cart (id)');
-        $this->addSql('CREATE UNIQUE INDEX UNIQ_8D93D64945F80CD ON user (shopping_cart_id)');
+        // $this->addSql('ALTER TABLE user ADD CONSTRAINT FK_8D93D64945F80CD FOREIGN KEY (shopping_cart_id) REFERENCES shopping_cart (id)');
+        // $this->addSql('CREATE UNIQUE INDEX UNIQ_8D93D64945F80CD ON user (shopping_cart_id)');
     }
 
     public function down(Schema $schema) : void
