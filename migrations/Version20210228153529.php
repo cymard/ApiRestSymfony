@@ -20,7 +20,7 @@ final class Version20210228153529 extends AbstractMigration
     public function up(Schema $schema) : void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        // $this->addSql('ALTER TABLE cart_product ADD shopping_cart_id INT NOT NULL');
+        $this->addSql('ALTER TABLE cart_product ADD shopping_cart_id INT NOT NULL');
     }
 
     public function down(Schema $schema) : void
