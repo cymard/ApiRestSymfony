@@ -29,8 +29,8 @@ final class Version20210303094132 extends AbstractMigration
         $this->addSql('ALTER TABLE product DROP FOREIGN KEY FK_D34A04AD25EE16A8');
         $this->addSql('DROP INDEX IDX_D34A04AD25EE16A8 ON product');
         $this->addSql('ALTER TABLE product DROP cart_product_id');
-        $this->addSql('ALTER TABLE user DROP FOREIGN KEY FK_8D93D64925EE16A8');
-        $this->addSql('DROP INDEX IDX_8D93D64925EE16A8 ON user');
+        // $this->addSql('ALTER TABLE user DROP FOREIGN KEY FK_8D93D64925EE16A8');
+        // $this->addSql('DROP INDEX IDX_8D93D64925EE16A8 ON user');
         $this->addSql('ALTER TABLE user DROP cart_product_id');
     }
 
