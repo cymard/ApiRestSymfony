@@ -20,10 +20,10 @@ final class Version20210228125032 extends AbstractMigration
     public function up(Schema $schema) : void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE cart_product DROP shopping_cart_id');
-        $this->addSql('ALTER TABLE shopping_cart ADD cart_product_id INT DEFAULT NULL');
-        $this->addSql('ALTER TABLE shopping_cart ADD CONSTRAINT FK_72AAD4F625EE16A8 FOREIGN KEY (cart_product_id) REFERENCES cart_product (id)');
-        $this->addSql('CREATE INDEX IDX_72AAD4F625EE16A8 ON shopping_cart (cart_product_id)');
+        // $this->addSql('ALTER TABLE cart_product DROP shopping_cart_id');
+        // $this->addSql('ALTER TABLE shopping_cart ADD cart_product_id INT DEFAULT NULL');
+        // $this->addSql('ALTER TABLE shopping_cart ADD CONSTRAINT FK_72AAD4F625EE16A8 FOREIGN KEY (cart_product_id) REFERENCES cart_product (id)');
+        // $this->addSql('CREATE INDEX IDX_72AAD4F625EE16A8 ON shopping_cart (cart_product_id)');
     }
 
     public function down(Schema $schema) : void
