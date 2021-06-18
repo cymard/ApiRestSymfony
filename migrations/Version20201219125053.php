@@ -21,6 +21,7 @@ final class Version20201219125053 extends AbstractMigration
     {
         // this up() migration is auto-generated, please modify it to your needs
         $this->addSql('ALTER TABLE product ADD image LONGTEXT NOT NULL, CHANGE price price INT NOT NULL');
+
     }
 
     public function down(Schema $schema) : void

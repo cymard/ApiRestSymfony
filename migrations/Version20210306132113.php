@@ -22,7 +22,7 @@ final class Version20210306132113 extends AbstractMigration
         // this up() migration is auto-generated, please modify it to your needs
         $this->addSql('ALTER TABLE `order` ADD CONSTRAINT FK_F5299398A76ED395 FOREIGN KEY (user_id) REFERENCES user (id)');
         $this->addSql('CREATE INDEX IDX_F5299398A76ED395 ON `order` (user_id)');
-        $this->addSql('ALTER TABLE order_product DROP INDEX UNIQ_2530ADE64584665A, ADD INDEX IDX_2530ADE64584665A (product_id)');
+        // $this->addSql('ALTER TABLE order_product DROP INDEX UNIQ_2530ADE64584665A, ADD INDEX IDX_2530ADE64584665A (product_id)');
     }
 
     public function down(Schema $schema) : void

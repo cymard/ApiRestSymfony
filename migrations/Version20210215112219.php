@@ -20,7 +20,7 @@ final class Version20210215112219 extends AbstractMigration
     public function up(Schema $schema) : void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('DROP TABLE comment_product');
+        // $this->addSql('DROP TABLE comment_product');
     }
 
     public function down(Schema $schema) : void

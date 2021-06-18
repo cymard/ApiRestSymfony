@@ -20,7 +20,8 @@ final class Version20210223154328 extends AbstractMigration
     public function up(Schema $schema) : void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE comment ADD report TINYINT(1) NOT NULL, CHANGE product_id product_id INT DEFAULT NULL, CHANGE date date DATETIME NOT NULL');
+        // $this->addSql('ALTER TABLE comment ADD report TINYINT(1) NOT NULL, CHANGE product_id product_id INT DEFAULT NULL, CHANGE date date DATETIME NOT NULL');
+        $this->addSql('ALTER TABLE comment ADD report TINYINT(1) NOT NULL, CHANGE product_id product_id INT DEFAULT NULL');
     }
 
     public function down(Schema $schema) : void
