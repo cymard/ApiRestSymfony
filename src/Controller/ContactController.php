@@ -59,7 +59,7 @@ class ContactController extends AbstractController
             $this->em->persist($newContact);
             $this->em->flush();
 
-            return $this->redirect("http://localhost:3000/products?category=all&page=1");
+            return $this->redirect("https://relaxed-sammet-0deed4.netlify.app/products?category=all&page=1");
         }
 
         return $this->render('contact/index.html.twig', [
