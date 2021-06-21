@@ -21,6 +21,7 @@ final class Version20210301105804 extends AbstractMigration
     {
         // this up() migration is auto-generated, please modify it to your needs
         $this->addSql('ALTER TABLE `order` ADD amount DOUBLE PRECISION NOT NULL');
+        $this->addSql('ALTER TABLE `order` ADD user_id INT DEFAULT NULL');
     }
 
     public function down(Schema $schema) : void
