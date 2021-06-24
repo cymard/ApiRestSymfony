@@ -98,7 +98,6 @@ class CartProductController extends AbstractController
     public function getShoppingCartProducts()
     {
         $user = $this->getUser();
-
         // trouver tous les products avec id du shoppingCart dans CartProduct
         $allCartProducts = $user->getCartProduct()->toArray();
 
