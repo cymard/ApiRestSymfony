@@ -12,6 +12,7 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
+use Symfony\Component\Serializer\SerializerInterface;
 
 
 
@@ -21,13 +22,15 @@ class UserController extends AbstractController
     private $validator;
     private $userPasswordEncoderInterface;
     private $normalizerInterface;
+    private $serializerInterface;
 
-    public function __construct(EntityManagerInterface $em, ValidatorInterface $validator, UserPasswordEncoderInterface $userPasswordEncoderInterface, NormalizerInterface $normalizerInterface)
+    public function __construct(SerializerInterface $serializerInterface, EntityManagerInterface $em, ValidatorInterface $validator, UserPasswordEncoderInterface $userPasswordEncoderInterface, NormalizerInterface $normalizerInterface)
     {
         $this->em = $em;
         $this->validator = $validator;
         $this->userPasswordEncoderInterface = $userPasswordEncoderInterface;
         $this->normalizerInterface = $normalizerInterface;
+        $this->serializerInterface = $serializerInterface;
     }
 
     private function sendJsonResponse ($dataArray,$status = 200)
