@@ -3,10 +3,11 @@
 namespace App\Entity;
 
 use DateTime;
+use DateTimeZone;
 use Doctrine\ORM\Mapping as ORM;
+use App\Repository\CommentRepository;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
-use App\Repository\CommentRepository;
 
 /**
  * @ORM\Entity(repositoryClass=CommentRepository::class)
@@ -65,7 +66,8 @@ class Comment
 
     public function __construct()
     {
-        $this->date = new DateTime();
+        $timeZone = new DateTimeZone('Europe/Paris');
+        $this->date = new DateTime('now',$timeZone);
     }
 
     public function getTitle(): ?string

@@ -100,8 +100,22 @@ class OrderProduct
 
         $orderProduct->setQuantity($cartProduct->getQuantity());
         $product = $cartProduct->getProduct();
-        $orderProduct->setProduct($product);
-        $orderProduct->setPrice($product->getPrice());
+
+
+        // Faire une copie de product pour éviter des erreurs de suppréssion (primary/foreign key).
+        $productCopy = new Product();
+        $productCopy->setPrice($product->getPrice());
+        $productCopy->setImage($product->getImage());
+        $productCopy->setDescription($product->getDescription());
+        $productCopy->setName($product->getName());
+        $productCopy->setCategory($product->getCategory());
+        $productCopy->setStock($product->getStock());
+        // $newProduct->setComments();
+        // $newProduct->setCartProducts();
+
+
+        $orderProduct->setProduct($productCopy);
+        $orderProduct->setPrice($productCopy->getPrice());
         return $orderProduct;
     }
 }
