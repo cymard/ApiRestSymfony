@@ -66,8 +66,7 @@ class Comment
 
     public function __construct()
     {
-        $timeZone = new DateTimeZone('Europe/Paris');
-        $this->date = new DateTime('now',$timeZone);
+        $this->date = new DateTime('now');
     }
 
     public function getTitle(): ?string
@@ -137,13 +136,9 @@ class Comment
         return $this;
     }
 
-
     public function getDate()
     {
-        $dateTime = $this->date; // objet datetime sous format iso8601
-        $theDate = $dateTime->format('d/m/y à H:i:s'); // changement de format
-        return $theDate;
-
+        return $this->date;
     }
 
 

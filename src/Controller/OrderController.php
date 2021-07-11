@@ -129,17 +129,16 @@ class OrderController extends AbstractController
 
         $newOrder = $this->serializerInterface->deserialize($request->getContent(), Order::class, "json");
 
-        // vérification du amount
-        if($newOrder->getAmount() === 0 ){
-            return $this->sendJsonResponse([
-                'message' => "Le montant total ne peut être égal à 0"
-            ]);
-        }
-
         $user = $this->getUser();
         $newOrder->setUser($user);
 
+        // Ne pas faire de commande avec 0 produit dans le panier.
         $cartProducts = $user->getCartProduct()->toArray();
+        if(count($cartProducts) <= 0 ){
+            return $this->sendJsonResponse([
+                'message' => "Le montant total ne peut pas être égal à 0."
+            ]);
+        }
 
         foreach($cartProducts as $cartProduct){
 
