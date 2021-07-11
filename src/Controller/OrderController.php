@@ -145,8 +145,9 @@ class OrderController extends AbstractController
             $orderProduct = OrderProduct::createOrderProductfromCartProduct($cartProduct);
             $orderProduct->setOrder($newOrder);
 
-            // baisse du stock
-            $product = $orderProduct->getProduct();
+            // baisse du stock du produit
+            // $product = $orderProduct->getProduct();
+            $product = $cartProduct->getProduct();
             $product->takeFromStock($cartProduct->getQuantity());
 
             $this->em->persist($orderProduct);
