@@ -36,6 +36,24 @@ class OrderProduct
      */
     private $price;
 
+    /**
+     * @ORM\ManyToOne(targetEntity=Product::class, cascade={"persist", "remove"})
+     * @ORM\JoinColumn(nullable=true)
+     */
+    private $product;
+
+    public function getProduct(): ?Product
+    {
+        return $this->product;
+    }
+
+    public function setProduct(?Product $product): self
+    {
+        $this->product = $product;
+
+        return $this;
+    }
+
     public function getId(): ?int
     {
         return $this->id;
@@ -65,17 +83,6 @@ class OrderProduct
         return $this;
     }
 
-    public function getProduct(): ?Product
-    {
-        return $this->product;
-    }
-
-    public function setProduct(?Product $product): self
-    {
-        $this->product = $product;
-
-        return $this;
-    }
 
     public function getPrice(): ?float
     {
@@ -103,8 +110,3 @@ class OrderProduct
 }
 
 
-//    /**
-//      * @ORM\ManyToOne(targetEntity=Product::class, cascade={"persist", "remove"})
-//      * @ORM\JoinColumn(nullable=false)
-//      */
-//     private $product;
