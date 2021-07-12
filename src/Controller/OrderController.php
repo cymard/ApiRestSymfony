@@ -79,7 +79,8 @@ class OrderController extends AbstractController
         
         foreach($orderProducts as $orderProduct){
             $quantity = $orderProduct->getQuantity();
-            $productInformations = ["product" => $orderProduct, "quantity" => $quantity];
+            $normalizedOrderProduct = $this->normalizerInterface->normalize($orderProduct);
+            $productInformations = ["product" => $normalizedOrderProduct, "quantity" => $quantity];
             array_push($allProducts, $productInformations);
         }
         return $this->sendJsonResponse([
@@ -160,12 +161,6 @@ class OrderController extends AbstractController
 
             $orderProduct = OrderProduct::createOrderProductfromCartProduct($cartProduct);
             $orderProduct->setOrder($newOrder);
-
-            // baisse du stock du produit
-            // $product = $orderProduct->getProduct();
-            $product = $cartProduct->getProduct();
-            $orderProduct->setImage($product->getImage());
-            $product->takeFromStock($cartProduct->getQuantity());
 
             $this->em->persist($orderProduct);
             $this->em->flush();

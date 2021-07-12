@@ -121,6 +121,10 @@ class OrderProduct
 
         $orderProduct->setProduct($product);
         $orderProduct->setPrice($product->getPrice());
+        $orderProduct->setImage($product->getImage());
+
+        // baisse du stock du produit
+        $product->takeFromStock($cartProduct->getQuantity());
 
         return $orderProduct;
     }
