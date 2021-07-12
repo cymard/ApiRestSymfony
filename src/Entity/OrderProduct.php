@@ -37,8 +37,8 @@ class OrderProduct
     private $price;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Product::class, cascade={"persist", "remove"})
-     * @ORM\JoinColumn(nullable=false)
+     * @ORM\OneToOne(targetEntity=Product::class)
+     * @ORM\JoinColumn(nullable=true)
      */
     private $product;
 
