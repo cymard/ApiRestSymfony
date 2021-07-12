@@ -41,7 +41,7 @@ class OrderProduct
     private $price;
 
     /**
-     * @ORM\OneToOne(targetEntity=Product::class)
+     * @ORM\ManyToOne(targetEntity=Product::class)
      * @ORM\JoinColumn(nullable=true)
      */
     private $product;
