@@ -42,6 +42,23 @@ class OrderProduct
      */
     private $product;
 
+    /**
+     * @ORM\Column(type="text", nullable=true)
+     */
+    private $image;
+
+    public function getImage()
+    {
+        return $this->image;
+    }
+
+    public function setImage($image)
+    {
+        $this->image = $image;
+
+        return $this;
+    }
+
     public function getProduct(): ?Product
     {
         return $this->product;

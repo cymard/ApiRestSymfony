@@ -52,6 +52,24 @@ class OrderController extends AbstractController
         return $response;
     }
 
+    // private function getOrderProductsAndQuantity ($orderId)
+    // {
+    //     $order = $this->orderRepo->findOneBy(["id" => $orderId]);
+    //     $orderProducts = $order->getOrderProducts()->toArray();
+
+    //     $allProducts = [];
+        
+    //     foreach($orderProducts as $orderProduct){
+    //         $quantity = $orderProduct->getQuantity();
+    //         $product = $this->normalizerInterface->normalize($orderProduct->getProduct(), null , ["groups" => "productWithoutComments"]);
+    //         $productInformations = ["product" => $product, "quantity" => $quantity];
+    //         array_push($allProducts, $productInformations);
+    //     }
+    //     return $this->sendJsonResponse([
+    //         "data" => $allProducts
+    //     ]);
+    // }
+
     private function getOrderProductsAndQuantity ($orderId)
     {
         $order = $this->orderRepo->findOneBy(["id" => $orderId]);
@@ -61,15 +79,13 @@ class OrderController extends AbstractController
         
         foreach($orderProducts as $orderProduct){
             $quantity = $orderProduct->getQuantity();
-            $product = $this->normalizerInterface->normalize($orderProduct->getProduct(), null , ["groups" => "productWithoutComments"]);
-            $productInformations = ["product" => $product, "quantity" => $quantity];
+            $productInformations = ["product" => $orderProduct, "quantity" => $quantity];
             array_push($allProducts, $productInformations);
         }
         return $this->sendJsonResponse([
             "data" => $allProducts
         ]);
     }
-
 
 
 
@@ -148,6 +164,7 @@ class OrderController extends AbstractController
             // baisse du stock du produit
             // $product = $orderProduct->getProduct();
             $product = $cartProduct->getProduct();
+            $orderProduct->setImage($product->getImage());
             $product->takeFromStock($cartProduct->getQuantity());
 
             $this->em->persist($orderProduct);
