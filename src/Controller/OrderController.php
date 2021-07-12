@@ -79,7 +79,7 @@ class OrderController extends AbstractController
         
         foreach($orderProducts as $orderProduct){
             $quantity = $orderProduct->getQuantity();
-            $normalizedOrderProduct = $this->normalizerInterface->normalize($orderProduct);
+            $normalizedOrderProduct = $this->normalizerInterface->normalize($orderProduct, null, ["groups" => "OrderProductWithoutRelation"]);
             $productInformations = ["product" => $normalizedOrderProduct, "quantity" => $quantity];
             array_push($allProducts, $productInformations);
         }

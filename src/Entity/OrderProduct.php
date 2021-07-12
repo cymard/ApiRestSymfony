@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use Symfony\Component\Validator\Constraints as Assert;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 use App\Repository\OrderProductRepository;
 
 /**
@@ -15,12 +16,14 @@ class OrderProduct
      * @ORM\Id
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
+     * @Groups({"OrderProductWithoutRelation"})
      */
     private $id;
 
     /**
      * @ORM\Column(type="integer")
      * @Assert\PositiveOrZero
+     * @Groups({"OrderProductWithoutRelation"})
      */
     private $quantity;
 
@@ -33,6 +36,7 @@ class OrderProduct
     /**
      * @ORM\Column(type="float")
      * @Assert\PositiveOrZero
+     * @Groups({"OrderProductWithoutRelation"})
      */
     private $price;
 
@@ -44,6 +48,7 @@ class OrderProduct
 
     /**
      * @ORM\Column(type="text", nullable=true)
+     * @Groups({"OrderProductWithoutRelation"})
      */
     private $image;
 
